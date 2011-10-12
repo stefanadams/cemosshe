@@ -1,0 +1,175 @@
+. "$CEMOSSHEDIR/functions/localshows__lib.net-tools"
+
+function PstreeShow () {
+    if [ `which pstree` ]; then
+        OUT=`pstree -capuA | sed -e 's/$/<br \/>/' | paste -s`
+        OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;pstree -capuA;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Processes <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+function IfconfigShow () {
+    OUT=`ifconfig | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`/bin/ls -1 /sys/class/net | grep -v '^lo$' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;ifconfig;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT NICs <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function DfShow () {
+    OUT=`df -hP | grep ^/dev/| sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;df -hP;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Partitions <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function RouteShow () {
+    OUT=`route -n | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;route -n;INFO;$(($OUTCOUNT-2));<div class='collapsable'>$(($OUTCOUNT-2)) Routes <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function WShow () {
+    OUT=`w | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;w;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function UnameShow () {
+    OUT=`uname -a | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;uname -a;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function DateShow () {
+    OUT=`date | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;date;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function LspciShow () {
+    mkdir -p "$DATADIR/cache"
+    if [ `date +%H` -eq 1 ]; then
+        if [ `which lspci` ]; then
+            OUT=`lspci | sed -e 's/$/<br \/>/' | paste -s`
+            OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+            echo "$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lspci;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" > "$DATADIR/cache/lspci.txt"
+            echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lspci;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+        fi
+    elif [ -e "$DATADIR/cache/lspci.txt" ]; then
+        echo -n "$DATE;$TIME;" >> $TEMPDIR/tmp.$$.collected.tmp
+        cat "$DATADIR/cache/lspci.txt" >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lspci;INFO;0;lspci Built Daily" >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+function LshwShow () {
+    mkdir -p "$DATADIR/cache"
+    if [ `date +%H` -eq 1 ]; then
+        if [ `which lshw` ]; then
+            OUT=`lshw | sed -e 's/$/<br \/>/' | paste -s`
+            OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+            echo "$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lshw;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" > "$DATADIR/cache/lshw.txt"
+            echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lshw;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+        fi
+    elif [ -e "$DATADIR/cache/lshw.txt" ]; then
+        echo -n "$DATE;$TIME;" >> $TEMPDIR/tmp.$$.collected.tmp
+        cat "$DATADIR/cache/lshw.txt" >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lshw;INFO;0;lshw Built Daily" >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+function UptimeShow () {
+    OUT=`uptime | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;uptime;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function FileShow () {
+    OUT=;
+    for i in "$@"; do OUT="$OUT<br /><u>$i:</u><br />$(cat $i | sed -e 's/$/<br \/>/' | paste -s)<br />"; done
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Files;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function FreeShow () {
+    OUT=`free | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Memory free;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function NetstatShow () {
+    OUT=`netstat -pan | grep "^tcp.*LISTEN" | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;netstat -pan;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function LastLoginShow () {
+    OUT=`last -1 | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Last Login;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+function HostNotesShow () {
+    if [ -f /etc/host-notes ]; then
+        OUT=`cat /etc/host-notes | sed -e 's/$/<br \/>/' | paste -s`
+        OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Host Notes;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+function PackagesShow () {
+    mkdir -p "$DATADIR/cache"
+    if [ `date +%H` -eq 1 ]; then
+        if [ `which rpm` ]; then
+            OUT=`rpm -qa | sed -e 's/$/<br \/>/' | paste -s`
+            OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+            echo "$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Packages <pre>$OUT</pre></div>" > "$DATADIR/cache/packages.txt"
+            echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Packages <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+        elif [ `which dpkg-query` ]; then
+            OUT=`dpkg-query -l | sed -e 's/$/<br \/>/' | paste -s`
+            OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+            echo "$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Packages <pre>$OUT</pre></div>" > "$DATADIR/cache/packages.txt"
+            echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Packages <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+        fi
+    elif [ -e "$DATADIR/cache/packages.txt" ]; then
+        echo -n "$DATE;$TIME;" >> $TEMPDIR/tmp.$$.collected.tmp
+        sed -e "s/;Installed Packages;/;Installed Packages (cached);/" "$DATADIR/cache/packages.txt" >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;0;Package List Built Daily" >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+function SysInfoShow () {
+    # Ubuntu
+    if [ `which landscape-sysinfo` ]; then
+        if [ $(echo "`cut -f1 -d ' ' /proc/loadavg` < 1.0" | bc) -eq 1 ]; then
+            STATUS1=INFO ; STATUS2=0
+            RR=`landscape-sysinfo --exclude-sysinfo-plugins=LandscapeLink | perl -pi -e 'chomp; s/:\s+/:\t/g; s/\s{2,}/\t/g; $_="<tr><td>".join("</td><td>", grep { /$_/ } split /\t/)."</td></tr>";'`
+        else
+            STATUS1=ALERT ; STATUS2=0
+            RR="System information disabled due to load higher than 1"
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;System Information;$STATUS1;$STATUS2;<table>$RR</table>" >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+function IsVirtualShow () {
+    if [ `which dmidecode` ]; then
+        OUT=`dmidecode | egrep -i 'Product Name: VMware'`
+        [ "$?" ] && yn="0" || yn="1"
+        [ -z "$OUT" ] && OUT="No"
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Virtual?;INFO;$yn;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+function SSHShow () {
+    if [ -e /root/.ssh/authorized_keys ]; then
+        OUT=`cut -d' ' -f3 /root/.ssh/authorized_keys | sed -e 's/$/<br \/>/' | paste -s`
+        OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    else
+        OUT="-"
+        OUTCOUNT=0
+    fi
+    [ -e /etc/ssh/publicport ] && . /etc/ssh/publicport
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed SSH Keys for root;INFO;$OUTCOUNT;<div class='collapsable'>Public port: ${PUBLICPORT:-N/A}<pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+}

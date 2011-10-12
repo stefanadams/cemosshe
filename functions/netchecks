@@ -1,0 +1,712 @@
+#!/bin/sh
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#
+# 	function library - please call with external script
+#
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+#############################################################################
+# CeMoSSHe: CEntral MOnitoring in a Simple SHell Environment
+#
+# Copyright (C) 2009- Volker Tanger
+# Copyright (C) 2011- Stefan Adams
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# For bug reports and suggestions or if you just want to talk to me please
+# contact me at stefan@cogentinnovators.com
+#
+# Updates will be available at  http://www.cogent-it.com/software/cemosshe/
+# please check there for updates prior to submitting patches!
+#
+# For list of changes please refer to the HISTORY file. Thanks.
+#############################################################################
+
+
+
+#############################################################################
+# network checks - functions below
+#############################################################################
+
+
+#---------------------------------------------------------
+# PingPartner - FQDN / NumPing / ALERT-Percent / WARN ms roundtrip
+#---------------------------------------------------------
+function PingPartner () {
+    MossheLog "PingPartner $1"
+    typeset -i ALERTPERC WARNMS VALUE LOSS WAIT
+    PARTNER=$1
+    NUMPING=$2
+    ALERTPERC=$3
+    WARNMS=$4
+
+    # ~# ping -c 3 -W 5 -n -q localhost
+    # PING localhost (127.0.0.1) 56(84) bytes of data.
+    #
+    # --- localhost ping statistics ---
+    # 3 packets transmitted, 3 received, 0% packet loss, time 1998ms
+    # rtt min/avg/max/mdev = 0.057/0.058/0.060/0.001 ms
+    ping -c $NUMPING -W $NETWAIT -n -q $PARTNER > $TEMPDIR/tmp.$$.ping_$PARTNER
+
+    STATUS="OK"
+    MESSAGE="Good ping from $MYGROUP: $MYNAME to $PARTNER"
+
+    LOSS=`fgrep " packet loss, time " $TEMPDIR/tmp.$$.ping_$PARTNER | cut -d " " -f 6 | cut -d "%" -f 1`
+    VALUE=`fgrep "rtt min/avg/max/mdev" $TEMPDIR/tmp.$$.ping_$PARTNER | cut -d "/" -f 5 | cut -d "." -f 1`
+    if [ "$VALUE" -gt "$WARNMS" ]; then
+        STATUS="WARN"
+        MESSAGE="High Latency from $MYGROUP: $MYNAME to $PARTNER"
+    fi
+    if [ "$LOSS" -gt "$ALERTPERC" ]; then
+        STATUS="ALERT"
+        MESSAGE="Too much packet loss from $MYGROUP: $MYNAME to $PARTNER : ${LOSS}%"
+        VALUE=$(( WAIT * 1000 ))
+    fi
+
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;ping_$PARTNER;$STATUS;$VALUE;$MESSAGE : $VALUE ms" >> $TEMPDIR/tmp.$$.collected.tmp
+    rm $TEMPDIR/tmp.$$.ping_$PARTNER
+}
+
+#---------------------------------------------------------
+# Ping6Partner - FQDN / NumPing / ALERT-Percent / WARN ms roundtrip
+#---------------------------------------------------------
+function Ping6Partner () {
+    MossheLog "PingPartner $1"
+    typeset -i ALERTPERC WARNMS VALUE LOSS WAIT
+    PARTNER=$1
+    NUMPING=$2
+    ALERTPERC=$3
+    WARNMS=$4
+
+    # ~# ping -c 3 -W 5 -n -q localhost
+    # PING localhost (127.0.0.1) 56(84) bytes of data.
+    #
+    # --- localhost ping statistics ---
+    # 3 packets transmitted, 3 received, 0% packet loss, time 1998ms
+    # rtt min/avg/max/mdev = 0.057/0.058/0.060/0.001 ms
+    ping6 -c $NUMPING -W $NETWAIT -n -q $PARTNER > $TEMPDIR/tmp.$$.ping_$PARTNER
+
+    STATUS="OK"
+    MESSAGE="Good ping from $MYGROUP: $MYNAME to $PARTNER"
+
+    LOSS=`fgrep " packet loss, time " $TEMPDIR/tmp.$$.ping_$PARTNER | cut -d " " -f 6 | cut -d "%" -f 1`
+    VALUE=`fgrep "rtt min/avg/max/mdev" $TEMPDIR/tmp.$$.ping_$PARTNER | cut -d "/" -f 5 | cut -d "." -f 1`
+    if [ "$VALUE" -gt "$WARNMS" ]; then
+        STATUS="WARN"
+        MESSAGE="High Latency from $MYGROUP: $MYNAME to $PARTNER"
+    fi
+    if [ "$LOSS" -gt "$ALERTPERC" ]; then
+        STATUS="ALERT"
+        MESSAGE="Too much packet loss from $MYGROUP: $MYNAME to $PARTNER : ${LOSS}%"
+        VALUE=$(( WAIT * 1000 ))
+    fi
+
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;ping6_$PARTNER;$STATUS;$VALUE;$MESSAGE : $VALUE ms" >> $TEMPDIR/tmp.$$.collected.tmp
+    rm $TEMPDIR/tmp.$$.ping_$PARTNER
+}
+
+#---------------------------------------------------------
+# PingLoss - FQDN / NumPing / PacketLoss% WARN / PacketLoss% ALERT
+#---------------------------------------------------------
+function PingLoss () {
+    MossheLog "PingLoss $1"
+    typeset -i ALERTPERC WARNPERC VALUE WAIT
+    PARTNER=$1
+    NUMPING=$2
+    WARNPERC=$3
+    ALERTPERC=$4
+
+    ping -c $NUMPING -W $NETWAIT -n -q $PARTNER > $TEMPDIR/tmp.$$.ping_$PARTNER
+
+    STATUS="OK"
+    MESSAGE="Ignorable packet loss $MYGROUP: $MYNAME to $PARTNER"
+
+    VALUE=`fgrep " packet loss, time " $TEMPDIR/tmp.$$.ping_$PARTNER | cut -d " " -f 6 | cut -d "%" -f 1`
+    if [ "$VALUE" -gt "$ALERTPERC" ]; then
+        STATUS="ALERT"
+        MESSAGE="Too much packet loss from $MYGROUP: $MYNAME to $PARTNER : ${VALUE}%"
+    elif [ "$VALUE" -gt "$WARNPERC" ]; then
+        STATUS="WARN"
+        MESSAGE="High packet loss from $MYGROUP: $MYNAME to $PARTNER : ${VALUE}%"
+    fi
+
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;pingloss_$PARTNER;$STATUS;$VALUE;$MESSAGE : ${VALUE}%" >> $TEMPDIR/tmp.$$.collected.tmp
+    rm $TEMPDIR/tmp.$$.ping_$PARTNER
+}
+
+#---------------------------------------------------------
+# Ping6Loss - FQDN / NumPing / PacketLoss% WARN / PacketLoss% ALERT
+#---------------------------------------------------------
+function Ping6Loss () {
+    MossheLog "PingLoss $1"
+    typeset -i ALERTPERC WARNPERC VALUE WAIT
+    PARTNER=$1
+    NUMPING=$2
+    WARNPERC=$3
+    ALERTPERC=$4
+
+    ping6 -c $NUMPING -W $NETWAIT -n -q $PARTNER > $TEMPDIR/tmp.$$.ping_$PARTNER
+
+    STATUS="OK"
+    MESSAGE="Ignorable packet loss $MYGROUP: $MYNAME to $PARTNER"
+
+    VALUE=`fgrep " packet loss, time " $TEMPDIR/tmp.$$.ping_$PARTNER | cut -d " " -f 6 | cut -d "%" -f 1`
+    if [ "$VALUE" -gt "$ALERTPERC" ]; then
+        STATUS="ALERT"
+        MESSAGE="Too much packet loss from $MYGROUP: $MYNAME to $PARTNER : ${VALUE}%"
+    elif [ "$VALUE" -gt "$WARNPERC" ]; then
+        STATUS="WARN"
+        MESSAGE="High packet loss from $MYGROUP: $MYNAME to $PARTNER : ${VALUE}%"
+    fi
+
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;ping6loss_$PARTNER;$STATUS;$VALUE;$MESSAGE : ${VALUE}%" >> $TEMPDIR/tmp.$$.collected.tmp
+    rm $TEMPDIR/tmp.$$.ping_$PARTNER
+}
+
+#---------------------------------------------------------
+# PingTime - FQDN / NumPing / WARN ms roundtrip / ALERT ms roundtrip
+#---------------------------------------------------------
+function PingTime () {
+    MossheLog "PingTime $1"
+    typeset -i ALERTPERC WARNMS VALUE WAIT
+    PARTNER=$1
+    NUMPING=$2
+    WARNMS=$3
+    ALERTMS=$4
+
+    ping -c $NUMPING -W $NETWAIT -n -q $PARTNER > $TEMPDIR/tmp.$$.ping_$PARTNER
+
+    STATUS="OK"
+    MESSAGE="Good ping from $MYGROUP: $MYNAME to $PARTNER"
+
+    VALUE=`fgrep "rtt min/avg/max/mdev" $TEMPDIR/tmp.$$.ping_$PARTNER | cut -d "/" -f 5 | cut -d "." -f 1`
+    if [ "$VALUE" -gt "$ALERTMS" ]; then
+        STATUS="ALERT"
+        MESSAGE="Excessive Latency from $MYGROUP: $MYNAME to $PARTNER"
+    elif [ "$VALUE" -gt "$WARNMS" ]; then
+        STATUS="WARN"
+        MESSAGE="High Latency from $MYGROUP: $MYNAME to $PARTNER"
+    fi
+
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;pingtime_$PARTNER;$STATUS;$VALUE;$MESSAGE : $VALUE ms" >> $TEMPDIR/tmp.$$.collected.tmp
+    rm $TEMPDIR/tmp.$$.ping_$PARTNER
+}
+
+#---------------------------------------------------------
+# Ping6Time - FQDN / NumPing / WARN ms roundtrip / ALERT ms roundtrip
+#---------------------------------------------------------
+function Ping6Time () {
+    MossheLog "PingTime $1"
+    typeset -i ALERTPERC WARNMS VALUE WAIT
+    PARTNER=$1
+    NUMPING=$2
+    WARNMS=$3
+    ALERTMS=$4
+
+    ping6 -c $NUMPING -W $NETWAIT -n -q $PARTNER > $TEMPDIR/tmp.$$.ping_$PARTNER
+
+    STATUS="OK"
+    MESSAGE="Good ping from $MYGROUP: $MYNAME to $PARTNER"
+
+    VALUE=`fgrep "rtt min/avg/max/mdev" $TEMPDIR/tmp.$$.ping_$PARTNER | cut -d "/" -f 5 | cut -d "." -f 1`
+    if [ "$VALUE" -gt "$ALERTMS" ]; then
+        STATUS="ALERT"
+        MESSAGE="Excessive Latency from $MYGROUP: $MYNAME to $PARTNER"
+    elif [ "$VALUE" -gt "$WARNMS" ]; then
+        STATUS="WARN"
+        MESSAGE="High Latency from $MYGROUP: $MYNAME to $PARTNER"
+    fi
+
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;ping6time_$PARTNER;$STATUS;$VALUE;$MESSAGE : $VALUE ms" >> $TEMPDIR/tmp.$$.collected.tmp
+    rm $TEMPDIR/tmp.$$.ping_$PARTNER
+}
+
+#---------------------------------------------------------
+# ARPing -  FQDN / NumPing / PacketLoss% WARN / PacketLoss% ALERT
+#---------------------------------------------------------
+function ARPing () {
+    MossheLog "ARPing $1"
+    typeset -i ALERTPERC WARNPERC VALUE WAIT
+    PARTNER=$1
+    NUMPING=$2
+    WARNPERC=$3
+    ALERTPERC=$4
+
+    STATUS="UNDEF"
+    if [ -z which arping ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;arping;$STATUS;99;arping not installed" >> $TEMPDIR/tmp.$$.collected.tmp
+        exit 0
+    fi
+
+    VALUE=`arping -c $NUMPING -w $NETWAIT $PARTNER | fgrep Received | cut -d " " -f 2`
+
+    STATUS="OK"
+    MESSAGE="Ignorable ARP packet loss $MYGROUP: $MYNAME to $PARTNER"
+
+    if [ "$VALUE" -gt "$ALERTPERC" ]; then
+        STATUS="ALERT"
+        MESSAGE="Too much packet loss from $MYGROUP: $MYNAME to $PARTNER : ${VALUE} von ${NUMPING}"
+    elif [ "$VALUE" -gt "$WARNPERC" ]; then
+        STATUS="WARN"
+        MESSAGE="High packet loss from $MYGROUP: $MYNAME to $PARTNER : ${VALUE} von ${NUMPING}"
+    fi
+
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;arping_$PARTNER;$STATUS;$VALUE;$MESSAGE : ${VALUE} von ${NUMPING}" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+#---------------------------------------------------------
+# TCPing   SERVER  PORT
+#---------------------------------------------------------
+# needs NETCAT command for service check
+
+function TCPing () {
+    MossheLog "TCPing $1 : $2"
+    SRV=$1
+    PORT=$2
+
+    STATUS="UNDEF"
+    typeset -i RTNCODE=0
+
+    if [ -z `which nc` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;TCPing $SRV:$PORT;UNDEF;-1;NC not installed - cannot perform network check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        echo " " | nc -w $NETWAIT -q 1 -i 1 $SRV $PORT
+        if [ $? -gt 0 ]; then
+            STATUS="ALERT";
+            RTN="Service tcp/$PORT unreachable"
+            RTNCODE=3
+        else
+            STATUS="OK"
+            RTN="Service tcp/$PORT answers"
+            RTNCODE=1
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;TCPing $SRV:$PORT;$STATUS;$RTNCODE;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+
+
+#---------------------------------------------------------
+# DNSquery   server  fqdn  querytype
+#---------------------------------------------------------
+# needs DIG command for DNS lookups
+
+function DNSquery () {
+    MossheLog "DNSquery @ $1  $2 $3"
+    typeset -i RTNCODE
+    DNSSERVER=$1
+    FQDN=$2
+    QTYPE=$3
+
+    STATUS="ALERT"
+    if [ -z `which dig` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;DNSquery_${DNSSERVER}_${FQDN}_${QTYPE};UNDEF;-1;DIG not installed - cannot perform DNS check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`dig +short @$DNSSERVER $FQDN $QTYPE | tail -n 1`
+        RTNCODE=`echo $RTN | wc -c | sed -e "s/ //g"`
+        if [ "$RTNCODE" -gt 7 ]; then
+            STATUS="OK";
+        else
+            RTN="(not resolved)"
+            RTNCODE=$(( RTNCODE + 30 ))
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;DNSquery_${DNSSERVER}_${FQDN}_${QTYPE};$STATUS;$RTNCODE;resolves to: $RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# DNSmatch   server  fqdn  querytype  match
+#---------------------------------------------------------
+# needs DIG command for DNS lookups
+
+function DNSmatch () {
+    MossheLog "DNSmatch @$1 $2 $3 = $4"
+    typeset -i RTNCODE
+    DNSSERVER=$1
+    FQDN=$2
+    QTYPE=$3
+    EXPECTED=$4
+
+    STATUS="ALERT"
+    if [ -z `which dig` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;DNSmatch_${DNSSERVER}_${FQDN}_${QTYPE};UNDEF;-1;DIG not installed - cannot perform DNS check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`dig +short +tries=5 @$DNSSERVER $FQDN $QTYPE | tail -n 1`
+        RTNCODE=`echo "$RTN" | wc -c | sed -e "s/ //g"`
+        if [ "$RTN" = "$EXPECTED" ]; then
+            STATUS="OK";
+        elif [ "$RTNCODE" -gt 7 ]; then
+            STATUS="WARN";
+            RTNCODE=$(( RTNCODE + 40 ))
+        else
+            RTN="(not resolved)"
+            RTNCODE=$(( RTNCODE + 80 ))
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;DNSmatch_${DNSSERVER}_${FQDN}_${QTYPE};$STATUS;$RTNCODE;resolves to: $RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# HTTPheader   URL (http/https)
+#---------------------------------------------------------
+# needs LYNX command for web access
+# set lynx.cfg to FORCE_SSL_PROMPT:YES
+
+function HTTPheader () {
+    MossheLog "HTTPheader $1"
+    URL=$1
+
+    typeset -i RTNCODE=0
+    SRV=`echo $URL | cut -d "/" -f 3`
+
+    if [ -z `which lynx` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;HTTPheader $URL;UNDEF;-1;LYNX not installed - cannot perform HTTP check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`lynx -connect_timeout=30 -dump -head $URL 2>/dev/null| head --lines=1`
+        RTNCODE=`echo $RTN | cut -d " " -f 2`
+
+        if [ -z "$RTN" ]; then STATUS="ALERT"; RTN="Service unreachable"
+        elif [ "$RTNCODE" -ge 500 ]; then STATUS="ALERT"
+        elif [ "$RTNCODE" -ge 300 ]; then STATUS="WARN"
+        elif [ "$RTNCODE" -ge 200 ]; then STATUS="OK"
+        else STATUS="UNDEF"
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;HTTPheader $URL;$STATUS;$RTNCODE;$URL - $RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# HTTPheadermatch   RETURNCODE  URL (http/https)
+#---------------------------------------------------------
+# needs LYNX command for web access
+# set lynx.cfg to FORCE_SSL_PROMPT:YES
+
+function HTTPheadermatch () {
+    MossheLog "HTTPheadermatch $2 = $1"
+    EXPECTED=$1
+    URL=$2
+
+    typeset -i RTNCODE=0
+    SRV=`echo $URL | cut -d "/" -f 3`
+
+    if [ -z `which lynx` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;HTTPheadermatch $URL = $EXPECTED;UNDEF;-1;LYNX not installed - cannot perform HTTP check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`lynx -connect_timeout=30 -dump -head $URL 2>/dev/null | head --lines=1`
+        RTNCODE=`echo $RTN | cut -d " " -f 2`
+
+        if [ -z "$RTN" ]; then STATUS="ALERT"; RTN="Service unreachable"
+        elif [ "$RTNCODE" = "$EXPECTED" ]; then STATUS="OK"
+        elif [ "$RTNCODE" -ge 400 ]; then STATUS="ALERT"
+        elif [ "$RTNCODE" -ge 200 ]; then STATUS="WARN"
+        else STATUS="UNDEF"
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;HTTPheadermatch $URL = $EXPECTED;$STATUS;$RTNCODE;$URL - $RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# HTTPcontentmatch   URL  match
+#---------------------------------------------------------
+# needs NETCAT command for service check
+
+function HTTPcontentmatch () {
+    MossheLog "HTTPcontentmatch $1 = $2"
+    URL=$1
+    MATCH=$2
+
+    typeset -i RTNCODE=0
+    SRV=`echo $URL | cut -d "/" -f 3 | cut -d ":" -f 1`
+    PORT=`echo $URL | cut -d "/" -f 3 | cut -d ":" -f 2`
+    if [ "$SRV" = "$PORT" ]; then PORT=80; fi
+
+    if [ -z `which netcat` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;HTTPcontentmatch $URL = $MATCH;UNDEF;-1;NC not installed - cannot perform HTTP check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        echo "GET $URL HTTP/1.0" > $TEMPDIR/tmp.$$.HTTPcontent_${SRV}.get
+        echo "Host: $SRV" >> $TEMPDIR/tmp.$$.HTTPcontent_${SRV}.get
+        echo "" >> $TEMPDIR/tmp.$$.HTTPcontent_${SRV}.get
+        cat $TEMPDIR/tmp.$$.HTTPcontent_${SRV}.get | nc -w $NETWAIT -q 1 -i 1 $SRV $PORT > $TEMPDIR/tmp.$$.HTTPcontent_$SRV.rtn
+        RTNCODE=`head --lines=1 $TEMPDIR/tmp.$$.HTTPcontent_$SRV.rtn | cut -d " " -f 2`
+        fgrep "$MATCH" $TEMPDIR/tmp.$$.HTTPcontent_$SRV.rtn >  $TEMPDIR/tmp.$$.HTTPcontent_${SRV}.match
+
+        if [ -z "$RTN" ]; then STATUS="ALERT"; RTN="Service unreachable"
+        elif [ -s $TEMPDIR/tmp.$$.HTTPcontent_${SRV}.match ]; then STATUS="OK"
+        elif [ "$RTNCODE" -ge 400 ]; then STATUS="ALERT"
+        elif [ "$RTNCODE" -ge 200 ]; then STATUS="WARN"
+        else STATUS="UNDEF"
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;HTTPcontentmatch $URL = $MATCH;$STATUS;$RTNCODE;$URL - $RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+        rm $TEMPDIR/tmp.$$.HTTPcontent_${SRV}.*
+    fi
+}
+
+#---------------------------------------------------------
+# FTPcheck  SERVER
+#---------------------------------------------------------
+# needs NETCAT command for service check
+
+function FTPcheck () {
+    MossheLog "FTPcheck $1"
+    SRV=$1
+
+    STATUS="UNDEF"
+    typeset -i RTNCODE=0
+
+    if [ -z `which netcat` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;FTPcheck $SRV;UNDEF;-1;NC not installed - cannot perform network check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`echo "quit" | nc -w $NETWAIT -q 1 -i 1 $SRV 21 | head -n 1`
+        if [ $? -gt 0 ];
+             then STATUS="ALERT";
+        else
+            typeset -i RTNCODE=`echo $RTN | head -c 3`
+            if [ -z "$RTN" ]; then STATUS="ALERT"; RTN="Service unreachable"
+            elif [ "$RTNCODE" -ge 500 ]; then STATUS="ALERT";
+            elif [ "$RTNCODE" -ge 400 ]; then STATUS="WARN";
+            elif [ "$RTNCODE" -ge 200 ]; then STATUS="OK"; fi
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;FTPcheck $SRV;$STATUS;$RTNCODE;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# SSHcheck  SERVER PORT
+#---------------------------------------------------------
+# needs NETCAT command for service check
+
+function SSHcheck () {
+    MossheLog "SSHcheck $1 : 2"
+    SRV="$1"
+    PORT="$2"
+    if [ -z "$PORT" ]; then PORT="22"; fi
+
+    STATUS="UNDEF"
+    typeset -i RTNCODE=0
+
+    if [ -z `which netcat` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;SSHcheck $SRV:$PORT;UNDEF;-1;NC not installed - cannot perform SSH check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        FULLRTN=`echo " " | nc -w $NETWAIT -q 1 -i 1 $SRV $PORT | head -n 1`
+        RTN=`echo "$FULLRTN" | head -c 4`
+        if [ "$RTN" = "SSH-" ]; then
+            STATUS="OK";
+            RTNCODE=1;
+            RTN="SSH running: $FULLRTN"
+        elif [ -z "$RTN" ]; then
+            STATUS="ALERT";
+            RTNCODE=3;
+            RTN="No response from SSH: $FULLRTN"
+        else
+            STATUS="WARN";
+            RTNCODE=2;
+            RTN="Strange response from SSH: $FULLRTN"
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;SSHcheck $SRV:$PORT;$STATUS;$RTNCODE;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# POP3check  SERVER
+#---------------------------------------------------------
+# needs NETCAT command for service check
+
+function POP3check () {
+    MossheLog "POP3check $1"
+    SRV=$1
+
+    STATUS="ALERT"
+    typeset -i RTNCODE=0
+
+    if [ -z `which netcat` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;POP3check $SRV;UNDEF;-1;NC not installed - cannot perform network check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`echo "quit" | nc -w $NETWAIT -q 1 -i 1 $SRV 110 | head --bytes=3`
+
+        if [ $? -gt 0 ]; then
+            STATUS="ALERT"
+            WERT=3
+        elif [ "$RTN" == "+OK" ]; then
+            STATUS="OK"
+            WERT="0";
+        else
+            STATUS="WARN"
+            WERT="1"
+        fi
+
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;POP3check $SRV;$STATUS;$RTNCODE;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# IMAPcheck  SERVER
+#---------------------------------------------------------
+# needs NETCAT command for service check
+
+function IMAPcheck () {
+    MossheLog "IMAPcheck $1"
+    SRV=$1
+
+    STATUS="ALERT"
+    typeset -i RTNCODE=0
+
+    if [ -z `which netcat` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;IMAPcheck $SRV;UNDEF;-1;NC not installed - cannot perform network check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`echo "IC Logout" | nc -w $NETWAIT -q 1 -i 1 $SRV 143 | head --bytes=4`
+
+        if [ $? -gt 0 ]; then
+            STATUS="ALERT"
+            WERT=3
+        elif [ "$RTN" == "* OK" ]; then
+            STATUS="OK"
+            WERT="0";
+        else
+            STATUS="WARN"
+            WERT="1"
+        fi
+
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;IMAPcheck $SRV;$STATUS;$WERT;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# SMTPcheck  SERVER
+#---------------------------------------------------------
+# needs NETCAT command for service check
+
+function SMTPcheck () {
+    MossheLog "SMTPcheck $1"
+    SRV=$1
+
+    STATUS="UNDEF"
+    typeset -i RTNCODE=0
+
+    if [ -z `which netcat` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;SMTPcheck $SRV;UNDEF;-1;NC not installed - cannot perform network check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`echo "quit" | nc -w $NETWAIT -q 1 -i 1 $SRV 25 | head -n 1`
+        if [ $? -gt 0 ];
+             then STATUS="DOWN";
+        else
+            typeset -i RTNCODE=`echo $RTN | cut -d " " -f 1`
+            if [ -z "$RTN" ]; then STATUS="ALERT"; RTN="Service unreachable"
+            elif [ "$RTNCODE" -ge 500 ]; then STATUS="ALERT";
+            elif [ "$RTNCODE" -ge 400 ]; then STATUS="WARN";
+            elif [ "$RTNCODE" -ge 200 ]; then STATUS="OK"; fi
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;SMTPcheck $SRV;$STATUS;$RTNCODE;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# RBLcheckFQDN  MailserverFQDN  RBLserver
+#---------------------------------------------------------
+# needs DIG command for service check
+
+function RBLcheckFQDN () {
+    MossheLog "RBLcheckFQDN $1 @ $2"
+    SRV=$1
+    RBL=$2
+
+    STATUS="UNDEF"
+    RTN="Huh? Check RBLcheckFQDN routine - something's wrong here"
+    typeset -i RTNCODE=33
+
+    if [ -z `which dig` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;RBLcheckFQDN_$RBL $SRV;UNDEF;-1;DIG not installed - cannot perform network check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        IP=`dig +short $SRV | grep -e "^[0-9.]\+$" | head -n 1`
+        set `IFS="."; echo $IP`
+        REVIP=`echo $4.$3.$2.$1`
+
+        RESOLVED=`dig ${REVIP}.${RBL} +short | grep -e "^127.0.0."`
+        RTNCODE=$?
+        if [ "$RTNCODE" -gt 1 ]; then
+            STATUS="WARN"
+            RTN="Blacklist $RBL somehow wrong (IP=$IP / revIP=$REVIP) - ExitCode $RTNCODE"
+        elif [ -z "$RESOLVED" ]; then
+            STATUS="OK";
+            RTN="$IP not blacklisted"
+            RTNCODE=0
+        else
+            STATUS="ALERT";
+            RTN="$RBL blacklists $IP : $RESOLVED"
+            RTNCODE=22
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;RBLcheckFQDN_$RBL $SRV;$STATUS;$RTNCODE;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# RBLcheckIP  MailserverIP  RBLserver
+#---------------------------------------------------------
+# needs DIG command for service check
+
+function RBLcheckIP () {
+    MossheLog "RBLcheckIP $1 @ $2"
+    SRV=$1
+    RBL=$2
+
+    STATUS="UNDEF"
+    RTN="Huh? Check RBLcheck routine - something's wrong here"
+    typeset -i RTNCODE=33
+
+    if [ -z `which dig` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;RBLcheckIP_$RBL $SRV;UNDEF;-1;DIG not installed - cannot perform network check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        IP=$SRV
+        set `IFS="."; echo $IP`
+        REVIP=`echo $4.$3.$2.$1`
+
+        RESOLVED=`dig ${REVIP}.${RBL} +short | grep -e "^127.0.0."`
+        RTNCODE=$?
+        if [ "$RTNCODE" -gt 1 ]; then
+            STATUS="WARN"
+            RTN="Blacklist $RBL somehow wrong (IP=$IP / revIP=$REVIP) - ExitCode $RTNCODE"
+        elif [ -z "$RESOLVED" ]; then
+            STATUS="OK";
+            RTN="$IP not blacklisted"
+            RTNCODE=0
+        else
+            STATUS="ALERT";
+            RTN="$RBL blacklists $IP : $RESOLVED"
+            RTNCODE=22
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;RBLcheckIP_$RBL $SRV;$STATUS;$RTNCODE;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#---------------------------------------------------------
+# SAMBAcheck  SERVER
+#---------------------------------------------------------
+# needs SMBCLIENT command for service check
+
+function SAMBAcheck () {
+    MossheLog "SAMBAcheck $1"
+    IP=$1
+
+    STATUS="UNDEF"
+    typeset -i RTNCODE=0
+
+    if [ -z `which smbclient` ]; then
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;SAMBAcheck $IP;UNDEF;-1;SMBCLIENT not installed - cannot perform network check"  >> $TEMPDIR/tmp.$$.collected.tmp
+    else
+        RTN=`smbclient -N -L $IP 2>/dev/null`
+        RTNCODE=$?
+        if [ "$RTNCODE" -gt 0 ]; then
+            STATUS="ALERT";
+            RTN="No SMB/CIFS services on $IP"
+        else
+            STATUS="OK";
+            RTN="SMB/CIFS services running on $IP"
+        fi
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;SAMBAcheck $IP;$STATUS;$RTNCODE;$RTN"  >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
+#############################################################################

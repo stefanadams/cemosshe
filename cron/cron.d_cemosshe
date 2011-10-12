@@ -1,0 +1,9 @@
+# Install with:
+#   ln -s /usr/local/lib/cemosshe/cron.d_cemosshe /etc/cron.d/cemosshe (No periods allowed in cron files)
+#   chmod 0755 /usr/local/lib/cemosshe/cron.d_cemosshe /usr/local/lib/cemosshe/cemosshe
+#   chown root.root /usr/local/lib/cemosshe/cron.d_cemosshe /usr/local/lib/cemosshe/cemosshe /etc/cron.d/cemosshe
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+*/5 * * * *	root	/usr/local/lib/cemosshe/cemosshe

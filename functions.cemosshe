@@ -1,0 +1,278 @@
+#!/bin/sh
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#
+# 	function library - please call with external script
+#
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+#############################################################################
+# CeMoSSHe: CEntral MOnitoring in a Simple SHell Environment
+#
+# Copyright (C) 2009- Volker Tanger
+# Copyright (C) 2011- Stefan Adams
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# For bug reports and suggestions or if you just want to talk to me please
+# contact me at stefan@cogentinnovators.com
+#
+# Updates will be available at  http://www.cogent-it.com/software/cemosshe/
+# please check there for updates prior to submitting patches!
+#
+# For list of changes please refer to the HISTORY file. Thanks.
+#############################################################################
+
+
+CEMOSSHEVERSION="11.10.12"
+
+#---------------------------------------------------------
+# init library and files
+#---------------------------------------------------------
+
+DATE=`date +%Y-%m-%d`
+TIME=`date +%H:%M:%S`
+
+CEMOSSHELOG=`date +"$TEMPDIR/cemosshelog_%Y-%m-%d_%Hh%M"`
+
+WWWDIR="$DATADIR"
+[ -z "$SYSTEMGROUP" ] && SYSTEMGROUP=`/bin/hostname -d`
+mkdir -p "$DATADIR" "$WWWDIR"
+
+#############################################################################
+### 	MoSShE internal functions
+#############################################################################
+function MossheLog () {
+    date +"%Y-%m-%d %H:%M:%S - $@ " >> $CEMOSSHELOG
+    [[ -t "0" || -p /dev/stdin ]] && date +"%Y-%m-%d %H:%M:%S - $@ "
+}
+
+#---------------------------------------------------------
+# Self-Check & Self-Locking
+#---------------------------------------------------------
+function MossheSelfCheck () {
+    MossheLog "MossheSelfCheck $1 $DATE $TIME"
+
+    if [ -f $TEMPDIR/cemosshe_lock.5 ]; then
+        logger -t MoSShE -p ${FACILITY:-local0}.err "$SYSTEMGROUP: $SYSTEMNAME - MoSShE in deadlock"
+        rm -f $TEMPDIR/cemosshe_lock.*
+        killall cemosshe
+    fi
+
+    if [ -f $TEMPDIR/cemosshe_lock.4 ]; then date > $TEMPDIR/cemosshe_lock.5; 
+    elif [ -f $TEMPDIR/cemosshe_lock.3 ]; then date > $TEMPDIR/cemosshe_lock.4;
+    elif [ -f $TEMPDIR/cemosshe_lock.2 ]; then date > $TEMPDIR/cemosshe_lock.3;
+    elif [ -f $TEMPDIR/cemosshe_lock.1 ]; then date > $TEMPDIR/cemosshe_lock.2;
+    elif [ -f $TEMPDIR/cemosshe_lock.0 ]; then date > $TEMPDIR/cemosshe_lock.1
+    fi
+
+    LOCKSEXIST=`ls $TEMPDIR/cemosshe_lock.? 2>/dev/null`
+    if [ -n "$LOCKSEXIST" ]; then
+        echo "MossheSelfCheck failed: MoSShE locked.  "
+        echo "Self-terminating.  Fix with rm -f $TEMPDIR/cemosshe_lock.?" 
+        echo " "
+        echo " "
+        cat $TEMPDIR/cemosshelog_*
+        date +"%Y-%m-%d %H:%M:%S - another MoSShE started and ran into lock"
+        rm -f "$CEMOSSHELOG"
+        kill "$$"
+    fi
+    rm -f $TEMPDIR/cemosshelog_*
+    MossheLog "MossheSelfCheck - successfully established lock"
+    date > $TEMPDIR/cemosshe_lock.0
+}
+
+#---------------------------------------------------------
+# Install / Uninstall the MoSSHe environment
+#---------------------------------------------------------
+function MossheInstall () {
+    [ -e /etc/cemosshe-firstrun ] || date +"%Y-%m-%d" > /etc/cemosshe-firstrun
+    if [ ! -e /etc/host-notes ]; then
+        echo "System Notes for Display in MoSSHe" > /etc/host-notes
+        echo "MoSSHe Firstrun: "`cat /etc/cemosshe-firstrun` >> /etc/host-notes
+        [ -e /etc/issue ] && echo "Issue: "`cat /etc/issue` >> /etc/host-notes
+        [ -e /etc/ubuntu-sealed ] && echo "Ubuntu Sealed: "`cat /etc/ubuntu-sealed` >> /etc/host-notes
+        [ -e /etc/ubuntu-firstrun ] && echo "Ubuntu Firstrun: "`cat /etc/ubuntu-firstrun` >> /etc/host-notes
+    fi
+    mkdir -p /etc/cemosshe/functions /usr/local/etc/cemosshe/functions /var/log/cemosshe "$DATADIR"
+    [ -e "$CEMOSSHEDIR/cemosshe" ] && chmod 0755 "$CEMOSSHEDIR/cemosshe"
+    [ -e "$CEMOSSHEDIR/cemosshe" ] && chown root.root "$CEMOSSHEDIR/cemosshe"
+    [ -e /etc/cron.daily/logrotate-cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe" /etc/cron.daily/logrotate-cemosshe
+    [ -e "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe" ] && chmod 0755 "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe"
+    [ -e "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe" ] && chown root.root "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe"
+    [ -e /etc/cron.d/cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.d_cemosshe" /etc/cron.d/cemosshe
+    [ -e /etc/cron.d/cemosshe ] && chown root.root /etc/cron.d/cemosshe
+    [ -e "$CEMOSSHEDIR/cron/cron.d_cemosshe" ] && chmod 0755 "$CEMOSSHEDIR/cron/cron.d_cemosshe"
+    [ -e "$CEMOSSHEDIR/cron/cron.d_cemosshe" ] && chown root.root "$CEMOSSHEDIR/cron/cron.d_cemosshe"
+    [ -e /root/.ssh/cemosshe_rsa ] && cp -af /root/.ssh/cemosshe_rsa /etc/cemosshe/rsa
+    [ -e /root/.ssh/cemosshe_rsa.pub ] && cp -af /root/.ssh/cemosshe_rsa.pub /etc/cemosshe/rsa.pub
+}
+function MossheUninstall () {
+    [ -e "$CEMOSSHEDIR/uninstall" ] && rm -rf "$CEMOSSHEDIR/uninstall"
+    mkdir -p "$CEMOSSHEDIR/uninstall"
+    [ -e /etc/cemosshe-firstrun ] && mv /etc/cemosshe-firstrun /etc/host-notes "$CEMOSSHEDIR/uninstall"
+    [ -e /etc/cemosshe ] && mv /etc/cemosshe "$CEMOSSHEDIR/uninstall/etc-cemosshe"
+    [ -e /usr/local/etc/cemosshe ] && mv /usr/local/etc/cemosshe "$CEMOSSHEDIR/uninstall/usr-local-etc-cemosshe"
+    [ -e /var/log/cemosshe ] && mv /var/log/cemosshe "$CEMOSSHEDIR/uninstall/var-log-cemosshe"
+    [ -e "$DATADIR" ] && mv "$DATADIR" "$CEMOSSHEDIR/uninstall"
+    rm -f /etc/cron.daily/logrotate-cemosshe /etc/cron.d/cemosshe
+    rm -f $TEMPDIR/cemosshe_lock.*
+    echo Uninstalled MoSSHE $CEMOSSHEVERSION
+    exit
+}
+
+#---------------------------------------------------------
+# Sample collection of the localshows.  Overwrite by putting this function in
+# /etc/cemosshe/functions
+#---------------------------------------------------------
+function MossheInfo () {
+    HostNotesShow
+    IsVirtualShow
+    SysInfoShow
+    DateShow
+    UptimeShow
+    UnameShow
+    WShow
+    DfShow
+    FreeShow
+    IfconfigShow
+    SSHShow
+    PstreeShow
+    RouteShow
+    LastLoginShow
+    NetstatShow
+    FileShow /etc/issue /etc/hosts /etc/resolv.conf
+    PackagesShow
+    LspciShow
+    LshwShow
+}
+
+#---------------------------------------------------------
+# Generate SLA info and Syslog it
+#---------------------------------------------------------
+function Finalize () {
+    FACILITY="${1:-local0}"
+    MossheLog "Finalize $FACILITY"
+    while read NEW; do
+        NDATE=`echo $NEW | cut -d ";" -f 1`
+        NTIME=`echo $NEW | cut -d ";" -f 2`
+        NSYSTEMGROUP=`echo $NEW | cut -d ";" -f 3`
+        NSYSTEMNAME=`echo $NEW | cut -d ";" -f 4`
+        NPROPERTYGROUP=`echo $NEW | cut -d ";" -f 5`
+        NPROPERTYNAME=`echo $NEW | cut -d ";" -f 6`
+        NSTATUS=`echo $NEW | cut -d ";" -f 7`
+        NVALUE=`echo $NEW | cut -d ";" -f 8`
+        NDETAIL=`echo $NEW | cut -d ";" -f 9`
+        if [ "$NSTATUS" = "INFO" ]; then
+            echo "$NDATE;$NTIME;$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;$NSTATUS;;;$NVALUE;$NDETAIL" >> $TEMPDIR/tmp.$$.recollected.tmp
+        else
+            NEPOCH=`date -d "$NDATE $NTIME" +%s`
+            NPATH=`echo "$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME" | md5sum | cut -d\  -f1`
+            mkdir -p "$DATADIR/collected/$NPATH"
+            echo "$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME" > "$DATADIR/collected/$NPATH/path"
+            echo "$NEPOCH;$NSTATUS" > "$DATADIR/collected/$NPATH/new"
+            if [ -e "$DATADIR/collected/$NPATH/old" ]; then
+                OEPOCH=`cut -d ";" -f 1 "$DATADIR/collected/$NPATH/old"`
+                OSTATUS=`cut -d ";" -f 2 "$DATADIR/collected/$NPATH/old"`
+            else
+                OEPOCH="$NEPOCH"
+                OSTATUS=""
+            fi
+            DIFFSEC=$(($NEPOCH-$OEPOCH))
+            if ! [ "$NSTATUS" = "$OSTATUS" ] && ! [ "$NSTATUS" = "ALERT" -a \( "$OSTATUS" = "WARN" -o "$OSTATUS" = "UNDEF" \) ] && ! [ "$NSTATUS" = "WARN" -a \( "$OSTATUS" = "ALERT" -o "$OSTATUS" = "UNDEF" \) ] && ! [ "$NSTATUS" = "UNDEF" -a \( "$OSTATUS" = "WARN" -o "$OSTATUS" = "ALERT" \) ]; then
+                if [ "$NSTATUS" = "OK" ]; then
+                    UPDOWN="UP"
+                    DOWNUP="DOWN"
+                    logger -t MoSShE -p ${FACILITY}.info "$NSTATUS - $NPROPERTYNAME @ $NSYSTEMGROUP: $NSYSTEMNAME is okay - $NDETAIL"
+                else
+                    UPDOWN="DOWN"
+                    DOWNUP="UP"
+                    if [ "$NSTATUS" = 'WARN' ]; then
+                        logger -t MoSShE -p ${FACILITY}.warn "$NSTATUS - $NPROPERTYNAME @ $NSYSTEMGROUP: $NSYSTEMNAME is not okay - $NDETAIL"
+                    elif [ "$NSTATUS" = 'ALERT' ]; then
+                        logger -t MoSShE -p ${FACILITY}.alert "$NSTATUS - $NPROPERTYNAME @ $NSYSTEMGROUP: $NSYSTEMNAME is broken/critical - $NDETAIL"
+                    else
+                        logger -t MoSShE -p ${FACILITY}.err "$NSTATUS - $NPROPERTYNAME @ $NSYSTEMGROUP: $NSYSTEMNAME check is not working - $NDETAIL"
+                    fi
+                fi
+                echo "$NDATE;$NTIME;$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;$NSTATUS;$DOWNUP;$DIFFSEC;Was $DOWNUP for $DIFFSEC seconds" >> "$DATADIR/sla.csv"
+                echo "$NEPOCH;$NSTATUS" > "$DATADIR/collected/$NPATH/old"
+            else
+                if [ "$NSTATUS" = "OK" ]; then
+                    UPDOWN="UP"
+                    DOWNUP="DOWN"
+                else
+                    UPDOWN="DOWN"
+                    DOWNUP="UP"
+                fi
+            fi
+            UP=`grep ";$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;" "$DATADIR/sla.csv" | grep ";UP;" | cut -d\; -f9 | paste -s -d+ | bc`
+            DOWN=`grep ";$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;" "$DATADIR/sla.csv" | grep ";DOWN;" | cut -d\; -f9 | paste -s -d+ | bc`
+            if [ "$NSTATUS" = "$OSTATUS" ] || [ "$NSTATUS" = "ALERT" -a \( "$OSTATUS" = "WARN" -o "$OSTATUS" = "UNDEF" \) ] || [ "$NSTATUS" = "WARN" -a \( "$OSTATUS" = "ALERT" -o "$OSTATUS" = "UNDEF" \) ] || [ "$NSTATUS" = "UNDEF" -a \( "$OSTATUS" = "WARN" -o "$OSTATUS" = "ALERT" \) ]; then
+                [ "$UPDOWN" = "UP" ] && UP=$(($UP+$DIFFSEC))
+                [ "$UPDOWN" = "DOWN" ] && DOWN=$(($DOWN+$DIFFSEC))
+            fi
+            TT=$((${UP:-1}+${DOWN:-1})) ; [ "$TT" -eq 0 ] && TT=1
+            PUP=`echo "scale=4;${UP:-1} / ${TT:-1} * 100" | bc | sed -e 's/00$//'`
+            echo "$NDATE;$NTIME;$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;$NSTATUS;$PUP%;$DIFFSEC;$NVALUE;$NDETAIL" >> $TEMPDIR/tmp.$$.recollected.tmp
+        fi
+    done < "$TEMPDIR/tmp.$$.collected.tmp"
+    mv $TEMPDIR/tmp.$$.collected.tmp "$WWWDIR/index.csv"
+    mv $TEMPDIR/tmp.$$.recollected.tmp "$DATADIR/details.csv"
+}
+
+#---------------------------------------------------------
+# PushResults method server:port username identityfile
+#---------------------------------------------------------
+function PushResults () {
+    if [ "$1" = "sftp" -a `which sftp` ]; then
+        MossheLog "PushResults $1 $2 $3 $4"
+        CENTRALCEMOSSHE=`echo $2 | cut -d: -f1`
+        CENTRALCEMOSSHE_PORT=`echo $2 | cut -d: -f2`
+        [ -z "$CENTRALCEMOSSHE_PORT" -o "$CENTRALCEMOSSHE" = "$CENTRALCEMOSSHE_PORT" ] && CENTRALCEMOSSHE_PORT=22
+        CENTRALCEMOSSHE_USER="$3"
+        CENTRALCEMOSSHE_IDENTITYFILE="$4"
+
+        [ -z "$CENTRALCEMOSSHE" ] && return
+
+        echo sftp -oPort="${CENTRALCEMOSSHE_PORT:-22}" -oIdentityFile="${CENTRALCEMOSSHE_IDENTITYFILE:-/etc/cemosshe/rsa}" "${CENTRALCEMOSSHE_USER:-cemosshe}"@"$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
+        echo -e "-mkdir csv/$SYSTEMGROUP\n-mkdir csv/$SYSTEMGROUP/$SYSTEMNAME\n-rename csv/$SYSTEMGROUP/$SYSTEMNAME/details.csv csv/$SYSTEMGROUP/$SYSTEMNAME/details.csv~\n-rename csv/$SYSTEMGROUP/$SYSTEMNAME/sla.csv csv/$SYSTEMGROUP/$SYSTEMNAME/sla.csv~\nput $DATADIR/details.csv csv/$SYSTEMGROUP/$SYSTEMNAME\nput $DATADIR/sla.csv csv/$SYSTEMGROUP/$SYSTEMNAME\nchmod 0664 csv/$SYSTEMGROUP/$SYSTEMNAME/*" | \
+            sftp -oPort="${CENTRALCEMOSSHE_PORT:-22}" -oIdentityFile="${CENTRALCEMOSSHE_IDENTITYFILE:-/etc/cemosshe/rsa}" "${CENTRALCEMOSSHE_USER:-cemosshe}"@"$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
+    elif [ "$1" = "curl" -a `which curl` ]; then
+        MossheLog "PushResults $1 $2 $3"
+        CENTRALCEMOSSHE="$2"
+        CENTRALCEMOSSHE_PASS="$3"
+        CENTRALCEMOSSHE_USER="${4:-$SYSTEMGROUP}"
+
+        [ -z "$CENTRALCEMOSSHE" ] && return
+
+        curl -d user="${CENTRALCEMOSSHE_USER:-anonymous}" -d pass="${CENTRALCEMOSSHE_PASS:-anonymous}" --data-urlencode details@"$DATADIR/details.csv" --data-urlencode sla@"$DATADIR/sla.csv" -d systemgroup="$SYSTEMGROUP" -d systemname="$SYSTEMNAME" "$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
+    fi
+}
+
+#---------------------------------------------------------
+# LogTo filename
+#---------------------------------------------------------
+function LogTo () {
+    MossheLog "LogTo $1 $2"
+    LOGFILENAME="$1"
+    [ -z "$LOGFILENAME" ] && return
+    LOGFREQ="$2"
+    mkdir -p `dirname $LOGFILENAME`
+    if [ "$LOGFREQ" = "Daily" ]; then
+        LOGFILENAME=$LOGFILENAME.$DATE
+    elif [ "$LOGFREQ" = "Weekly" ]; then
+        LOGFILENAME=$LOGFILENAME.`date +"%Ykw%W"`
+    elif [ "$LOGFREQ" = "Monthly" ]; then
+        LOGFILENAME=$LOGFILENAME.`date +"%Y-%m"`
+    fi
+    cat "$DATADIR/details.csv" >> $LOGFILENAME
+}
+
+#############################################################################
+###	MoSShE load functions
+#############################################################################
+for i in $CEMOSSHEDIR/functions/* /usr/local/etc/cemosshe/functions/* /etc/cemosshe/functions/*; do [ -x "$i" ] && . "$i"; done

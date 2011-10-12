@@ -1,0 +1,629 @@
+CeMoSShE: CEntral MOnitoring in a Simple SHell Environment
+
+Copyright (C) 2003- Volker Tanger  <volker.tanger@wyae.de>
+Copyright (C) 2011- Stefan Adams   <stefan@cogentinnovators.com>
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+http://www.gnu.org/copyleft/gpl.html
+
+
+CeMoSShE HISTORY
+
+CeMoSShE was forked by Stefan Adams on October 11, 2011 due to a change in
+direction.  While the core of CeMoSShE is still the original MoSShE, some
+critical concepts have changed direction, most specifically is the focus
+on delivering the database of checks to a central server as opposed to
+having them pulled.
+
+For bug reports and suggestions or if you just want to talk to me
+please contact me at stefan@cogentinnovators.com
+
+Updates will be available at  http://www.cogent-it.com/software/cemosshe/
+please check there for updates prior to submitting patches!
+
+MoSShE HISTORY
+
+The general idea was taken from plugins I wrote for the Nagios (formerly
+NetSaint) network/host monitoring system (NMS), especially the various
+versions of ASLrules.
+
+As most of the servers/services I want to monitor are remote systems,
+traditional NMS (relying on close-looped and/or unencrypted sessions) are
+either big, complicated to install for safe remote monitoring, ressource
+intense (when doing remote checks), lack a status history or a combination
+thereof.
+
+Thus I wrote this small, easily configured system. It primarily was
+intended for monitoring of a handful of typical internet systems. With
+the more recent versions system and grouping features monitoring of
+serious numbers of systems should be easily possible.
+
+For bug reports and suggestions or if you just want to talk to me
+please contact me at volker.tanger@wyae.de
+
+Updates will be available at  http://www.wyae.de/software/mosshe/
+please check there for updates prior to submitting patches!
+
+
+------------------------------------------------------------------------
+
+v11.10.12
+    !!! FORKED to CeMoSShE !!!
+    Stefan Adams <stefan@cogentinnovators.com>
+
+v11.10.6
+    !!! this version changes the log format !!!
+    !!!   - added PROPERTYGROUP (or SYSTEMGROUP, depending how you looked at
+    !!!     it before) column
+    !!! this version changes the sla log format !!!
+    Stefan Adams <stefan@cogentinnovators.com>
+	- Complete rewrite, including new sla.csv and details.csv format
+	- Scrapped HTML/Plotting -- to be handled by new CGI
+	- Scrapped E-mail -- to be handled by Syslog parser
+	- Scrapped importing
+	- Scrapped nagios output
+
+v11.7.x
+	- BUG (to fix): ImportAgents do not alert when slave unavailabe
+	- TODO: change info-"checks" to be included into the
+	  server-specific HTML pages only, removing the JS stuff
+
+
+v11.6.27
+    !!! HardwareTemp and HardwareFan will be deprecated 
+    !!! in one of the next versions - use HardwareSensor instead
+    !!! CreateDataFiles was removed as unused
+    Volker Tanger <volker.tanger@wyae.de>
+    	- bugfix SAMBAcheck (removed CRON chatter, corrected server name)
+	- improved lock message & internal logging to find lockups
+	- fixed typo, extended example mosshe script
+	- fixed typo in ImportAgents
+	- added generic hardware sensor check
+	- added IPv6 pings: Ping6Partner, Ping6Loss, Ping6Time
+	- added average graphing/plotting
+
+
+v11.5.10
+    David Soergel
+    	- bug report: forgotten gnuplot template
+    Volker Tanger <volker.tanger@wyae.de>
+	- added automatic reload / refresh (5 minutes) to template
+	- added SwapCheck - page swaps per second
+	- added ImportAgentWget
+	- corrected/added NC parameters in functions.network
+	- bugfix SSHcheck
+	- bugfix HardwareTemp
+	- bugfix ImportAgent (linewrap)
+	- bugfix SyslogOnChange (missed group change)
+	- bugfix table header in template
+
+v11.2.23
+    Volker Tanger <volker.tanger@wyae.de>
+	- added function CreateDataFiles, creating basis for RRDB-alike data
+	- added function PlotDataFiles, which creates & plots RRDB/MRTG-alike 
+	  data & graphs using gnuplot
+
+v10.12.19
+    Volker Tanger <volker.tanger@wyae.de>
+	- bugfix: removed unneccessary ping from ReapPassiveChecks
+	- added FileTooOld check
+	- added FileTooBig check
+
+v10.12.16
+    Christoph R.
+	- found typo in SSHcheck function definition	
+	- found typo in mosshe main script
+    Volker Tanger <volker.tanger@wyae.de>
+	- removed CentralizeLog due to security concerns
+	- added ReapPassiveChecks for incoming/passive monitoring
+	  (experimental, please help debugging)
+
+v10.12.6
+    Volker Tanger <volker.tanger@wyae.de>
+	- added ARPing, idea by Thomas Bullinger http://consult.btoy1.net
+	- small bugfix in server listing (when same server is in
+   	  differnt groups)
+	- added a quick-setup-script  "create_mosshe.sh"  which scans the
+	  network given and creates a basic monitoring
+	- added SSH check
+	- added TCPing for generic TCP services
+  
+v10.12.5
+    !!! this version changes the log format !!!
+    !!!   - added GROUP column
+    !!!   - added INFO status
+    Stefan Adams <stefan@cogentinnovators.com>
+	- fixed HDCheck - Showed 0MB free when partition specified not
+	  available (Ubuntu 10.04)
+	- added INFO status in addition to OK, WARN, ALERT, UNDEF.  This
+	  allows simply reporting info without considering it a check
+	- add error checking against "mail" not available which resulted 
+	  in odd error messages. Now will terminate with reasons.
+	- added CentralizeLog - Not always possible for a central server
+	  to pull data, this will push data
+	- changed use of lynx in ImportAgent to curl.  Seems more commonly
+	  available.
+	- added functions.localshows - functions dedicated to simply showing
+	  info as opposed to checking.  Needn't be its own file, just done
+	  for organizational purposes.
+	- modified template_head.html to include js and css for collapsable
+	  detail -- well suited for INFO showing
+	- fixed LogTo* functions to mkdir -p `dirname $LOGFILENAME` to ensure
+	  log gets written
+	- changed default of MYNAME to $(/bin/hostname)
+	- added MYDOM $(/bin/hostname -d) and MYGROUP (obtained from DNS TXT)
+	- added Group feature and Group sorting
+    Volker Tanger <volker.tanger@wyae.de>
+	- changed a few functions and file names for better compatibility 
+	- changed html indentation for better readability
+	- added cron job for log rotation if not done via logrotate or
+	  similar system tools
+
+v10.12.1
+    Volker Tanger <volker.tanger@wyae.de>
+	- added PingLoss & PingTime funcktions for more detailled checks
+	- added SmartMonHealth harddisk monitoring
+	- added Raid3ware hardware-RAID check
+	- added LogToDaily, LogToWeekly, LogToMonthly
+
+v10.9.14
+    Volker Tanger <volker.tanger@wyae.de>
+	- added "HardwareTemp" for checking temperatures in addition
+	  to the old mbmon-checks
+	- added "HardwareFan" for checking fan speed in addition
+	  to the old mbmon-checks
+
+v10.6.22
+    Volker Tanger <volker.tanger@wyae.de>
+        - nicer GUI: server-list & per-server listing (optional)
+	- added output file suitable for passive checks in Nagios.
+	  This way MoSShE can be used as safe alternative for NRPE.
+
+v10.5.18
+    Volker Tanger <volker.tanger@wyae.de>
+	- added SyslogOnChange to write alerts to syslog 
+
+v10.3.24
+    Volker Tanger <volker.tanger@wyae.de>
+	- added/changed load function:
+		LoadCheck  now checks 5-minutes average (instead of 15min window)
+		LoadCheckFast  checks 1-minute average
+		LoadCheckSlow  checks 15-minutes average
+	- corrected POP3check which did not work at all since 
+	  upgrade from version 1.4.7 (dumb variable renaming missed)
+
+v10.2.24
+    Volker Tanger <volker.tanger@wyae.de>
+	- functions.network: redirected error messages by LYNX to /dev/zero
+	  to avoid error messages from CRON calls
+	- corrected bug in self-locking (never reached timeout)
+	- deleted temp files from SLA checks
+	- added IDS functions:
+		CheckFileChanges
+          	CheckConfigChanges
+	  plus helper-script GENERATE-COMPARES.SH
+
+v10.2.22
+    Volker Tanger <volker.tanger@wyae.de>
+	- added web interface URL to alert mails
+	- added function to selectively alert admins about their system
+	- added full logging functions
+	- added agglomeration function to allow central server(s),
+	  to create one (or more) central servers polling information
+	  from agents
+
+v10.2.18
+    Volker Tanger <volker.tanger@wyae.de>
+	- more of bugfixes, especially in HTML output and SLA checks
+	- self-locking to prevent simultaneous checks, including
+	  watchdog-restart with admin alerting
+
+v10.2.10
+    Volker Tanger <volker.tanger@wyae.de>
+	- lots of bugfixes
+	- generating summary SLA checks
+
+v9.11.28
+    Volker Tanger <volker.tanger@wyae.de>
+	- complete rewrite
+	- migrating from SSH-on-demand to local-Shell-via-cron
+	- generation of local HTML status files
+
+========================================================================
+
+December 2008
+v1.4.6 to v1.4.7
+    * Volker Tanger <volker.tanger@wyae.de>
+	- removed bug: restart now clears status files
+
+------------------------------------------------------------------------
+
+November 2007
+v1.4.5 to v1.4.6
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added check for local files (e.g. Unix sockets)
+	- added check for running daemons/processes
+
+------------------------------------------------------------------------
+
+November 2007
+v1.4.4 to v1.4.5
+    * Volker Tanger <volker.tanger@wyae.de>
+	- HDD size check off by one, resulting in wrong numbers
+
+------------------------------------------------------------------------
+
+November 2007
+v1.4.3 to v1.4.4
+    * Volker Tanger <volker.tanger@wyae.de>
+	- corrected error messages due to missing date when programs
+	  not installed
+	- corrected server identification which did misfire when the
+	  first part of a server matched a different one
+	- added http_time check which returns reply time in milliseconds
+	- cleanup of stale (read: all) status files on startup
+	
+------------------------------------------------------------------------
+
+August 2007
+v1.4.2 to v1.4.3
+    * Volker Tanger <volker.tanger@wyae.de>
+	- console errors from mosshe_ssh are redirected into /dev/null
+
+------------------------------------------------------------------------
+
+May 2007
+v1.4.0 to v1.4.2
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added mosshe_checkrun (no file changes, for debugging)
+	- added SMB disk free check (sambafree)
+	- corrected filtering RegEx in mosshe.singlerun
+
+------------------------------------------------------------------------
+
+January 2007
+v1.3.11 to v1.4.0
+    * Volker Tanger <volker.tanger@wyae.de>
+	- changed name of mosshe checks (mosshe_ssh instead of ssh)
+	- added MOSSHE_HTTP check for unencrypted HTTP-based check
+	- added Logs/statechange_YEAR.log for easier up-/downtime calculation
+
+------------------------------------------------------------------------
+
+February 2007
+v1.4.0 to v1.4.1
+    * Volker Tanger <volker.tanger@wyae.de>
+	- corrected (finally!) memory check in localcheck.functions
+
+------------------------------------------------------------------------
+
+April 2006
+v1.3.10 to v1.3.11
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added "noping_" feature
+	- added RETRYSLEEP variable
+	- removed bug which left stale status information in server stat file
+
+------------------------------------------------------------------------
+
+December 2005
+v1.3.9 to v1.3.10
+    * Volker Tanger <volker.tanger@wyae.de>
+	- Changed FTP check to function with more servers 
+	  (better/more robust return code separation)
+	- cosmetic fixes in web interface
+	- updated documents (thanks Eduardo Grosclaude <oso@uncoma.edu.ar>)
+	- added "findbuggyline.py" to the Logs directory
+
+------------------------------------------------------------------------
+
+October 2005
+v1.3.8 to v1.3.9
+    * Volker Tanger <volker.tanger@wyae.de>
+	- Changed naming logic of log check a bit to allow multiple checks on one
+	  single log file, which was impossible before.
+
+------------------------------------------------------------------------
+
+October 2005
+v1.3.7 to v1.3.8
+    * Volker Tanger <volker.tanger@wyae.de>
+	- Added log file check (number of occorrencies) to SSH/localcheck.functions
+
+------------------------------------------------------------------------
+
+June 2005
+v1.3.6 to v1.3.7
+    * Volker Tanger <volker.tanger@wyae.de>
+	- corrected bug in DNS check
+    * Ronny Henke <ronny.henke@detewe.de>
+	- updated SNMP check for enchanced compatibility
+
+------------------------------------------------------------------------
+
+June 2005
+v1.3.5 to v1.3.6
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added MAILQ_CHECK to control the length of the mail queue to
+	  localcheck.functions
+	- main MoSSHe script: safer removement of stale stat files
+	- logs completed checks only to stat files - no longer incomplete stats
+	- showall.PY with added date of last check
+
+------------------------------------------------------------------------
+
+May 2005
+v1.3.4 to v1.3.5
+    * Volker Tanger <volker.tanger@wyae.de>
+	- loosened filtering RegEx to allow pathnames in disk check
+	- changed disk size base for localcheck.embedded to KILObytes
+	  instead of MEGAbytes.
+	- set 30 seconds timeout for HTTP/HTTPS checks
+
+------------------------------------------------------------------------
+
+May 2005
+v1.3.3 to v1.3.4
+    * Volker Tanger <volker.tanger@wyae.de>
+	!!! changed network traffic from byte/sec to the more usued kbit/s    
+    	- added FTP service check
+    	- added HTTPS service check
+	- added localcheck.embedded_functions for appliances using
+	  busybox shell/command replacement
+	- added template for known appliances to download:  Innominate mGuard
+	- nicened outputs from LOCALCHECK 
+
+------------------------------------------------------------------------
+
+May 2005
+v1.3.2 to v1.3.3
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added network checks (usage, errors)       
+	- added template for known appliances for download: Astaro
+	- webscripts ignore empty lines in servers.conf	
+
+------------------------------------------------------------------------
+
+March 2005
+v1.3.1 to v1.3.2
+    * Volker Tanger <volker.tanger@wyae.de>
+	- corrected overzealous check filter in mosshe.singlerun
+	
+
+------------------------------------------------------------------------
+
+January 2005
+v1.3.0 to v1.3.1
+    * Eduardo Grosclaude <oso@uncoma.edu.ar>
+	- corrected Volker's bugs in RaidCheck()
+
+------------------------------------------------------------------------
+
+January 2005
+v1.2.9 to v1.3.0
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added "changes only" notification/alert	
+	- stale server status files (i.e. when server removed from
+  	  monitoring) will be automatically removed	
+    * Eduardo Grosclaude <oso@uncoma.edu.ar>
+	- added Linux-SoftRAID monitoring for LOCALCHECK
+
+------------------------------------------------------------------------
+
+December 2004
+v1.2.8 to v1.2.9
+    * Volker Tanger <volker.tanger@wyae.de>
+	- improved HTTP check in way easier checking for URLs
+	  which unfortunately breaks compatibility...
+	- removed bug that disabled logging ($LOGFILE was not set)
+
+------------------------------------------------------------------------
+
+December 2004
+v1.2.7 to v1.2.8
+    * Volker Tanger <volker.tanger@wyae.de>
+	- removed bug introduced with 1.2.7 when checking for set
+	  environment paths
+	- *OUCH*  RegExp gone bad removed all check results. Corrected.
+	  Sorry guys, must have slipped somewhere...
+
+------------------------------------------------------------------------
+
+December 2004
+v1.2.6 to v1.2.7
+    * Volker Tanger <volker.tanger@wyae.de>
+	- split MOSSHE into three parts - config, loop and single check, 
+	  which helps testing setups.
+
+------------------------------------------------------------------------
+
+November 2004
+v1.2.5 to v1.2.6
+    * Volker Tanger <volker.tanger@wyae.de>
+	- repaired quite some bugs in snmp check, now numeric values
+	  are set for all fields. Changed snmp.* parameter files accordingly
+	- improved MBCheck in localcheck.functions 
+
+------------------------------------------------------------------------
+
+November 2004
+v1.2.4 to v1.2.5
+    * Volker Tanger <volker.tanger@wyae.de>
+	- quite some bugs in localcheck.functions (introduced with helper
+	  binary checks - usually missing "fi"s)
+	- nailed down the path to "localcheck.functions"
+	 - added check result sanitizing within mosshe script
+	 - corrected missing UNDEF listing in web interface(s) and mosshe
+	 - corrected SMTP check behaviour when service completely down
+    * Nicholas Fechner <fechner@ponton-consulting.de>
+	- improved HTTP check - now you can define expected returns (e.g.
+	  "302 Document moved") as OK, too.
+
+------------------------------------------------------------------------
+
+November 2004
+v1.2.2 to v1.2.4
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added safety checks for checks that need aditional/external 
+	  programs (smmp, localcheck.tempcheck)
+    * Eduardo Grosclaude  <oso@machi.uncoma.edu.ar>    
+	- corrected bug in alert handling (line 89)
+	- added MBMonCheck (CPU temperatur, fan speed, etc...)
+	
+------------------------------------------------------------------------
+
+November 2004
+v1.2.1 to v1.2.2
+    * Volker Tanger <volker.tanger@wyae.de>
+	- corrected SSH / SSH1 checks, did not notice server/SSH gone 
+	  completely. Will now return "UNDEF" when gone.
+	- plit "localcheck" into a config and a funtions part to make
+	  updates much easier (to "just copy").
+    + Eduardo Grosclaude  <oso@machi.uncoma.edu.ar>    
+	- updated README re. localcheck.include that was split in the last
+	  version 
+	- corrected cron_mosshe to enhance compatibility
+	- corrected CheckMem funtion in loclcheck
+	- added comments for the SSH tests
+	
+------------------------------------------------------------------------
+
+November 2004
+v1.2.2 to v1.2.3
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added "UNDEF" status to global_alert and mosshe
+	
+------------------------------------------------------------------------
+
+October 2004
+v1.2.0 to v1.2.1
+    * Volker Tanger <volker.tanger@wyae.de>
+	- corrected HTTP check, did not notice a server gone completely
+	- Added "UNDEF" alerting to alerts and web interface
+	
+------------------------------------------------------------------------
+
+October 2004
+v1.1.7 to v1.2.0
+    * Volker Tanger <volker.tanger@wyae.de>
+	- corrected PrintCheck warning output (did not show limit)
+	- delete status files of servers no longer in use
+	- changed alert basics so we can add other alerts soon...
+	
+------------------------------------------------------------------------
+
+October 2004
+v1.1.6 to v1.1.7
+    * Yann Pilpre <yann@pilpre.com>
+	- increased portability of disk check in LOCALCHECK when using "long"
+	  devices like /dev/ide/host0/bus0/target0/lun0/part7
+	
+------------------------------------------------------------------------
+
+October 2004
+v1.1.5 to v1.1.6
+    * Volker Tanger <volker.tanger@wyae.de>
+	- corrected disk check in LOCALCHECK so hanging network mounts do 
+	  not hang MOSSHE
+	
+------------------------------------------------------------------------
+
+October 2004
+v1.1.4 to v1.1.5
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added SSH V.1 remote check	
+	
+------------------------------------------------------------------------
+
+October 2004
+v1.1.3 to v1.1.4
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added -n flag to PING to make independent on DNS
+	- added DNS service test
+	- added SAMBA service check
+	- added printer and memory checks to LOCALCHECK
+	
+------------------------------------------------------------------------
+
+September 2004
+v1.1.2 to v1.1.3
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added a total count of checks/servers to SHOWALL overview
+	- increased compatibility by changing shell integer handling	
+    * Chad Lepto <clepto@null.net>
+	- suggested adding Logs directory to archive
+	- currected use of HEAD command line parameters	
+	- added compatibility documentation hints for README
+	
+------------------------------------------------------------------------
+
+September 2004
+v1.1.1 to v1.1.2
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added IMAP2 and IMAP3 checks
+
+------------------------------------------------------------------------
+
+September 2004
+v1.1.0 to v1.1.1
+    * Volker Tanger <volker.tanger@wyae.de>
+	- fixed small variable initialization error in tactical.oy (webinterface)
+
+------------------------------------------------------------------------
+
+August 2004
+v1.0.4 to v1.1.0
+    * Volker Tanger <volker.tanger@wyae.de>
+	- logfile rotated  daily
+	- added SNMP queries
+	- trend showing min/avg/max values
+
+------------------------------------------------------------------------
+
+August 2004
+v1.0.3 to v1.0.4
+    * Volker Tanger <volker.tanger@wyae.de>
+	- parametric command (http.tomcat)
+	- PING with execute-time (well, better than nothing...)
+	- central config file(s) for webview
+	- number of shells listed as numeric value 
+	- show mount point in addition to "Disk Free" message
+
+------------------------------------------------------------------------
+
+August 2004
+v1.0.2 to v1.0.3
+    * Volker Tanger <volker.tanger@wyae.de>
+	- changed PING behaviour to do retries, resulting in less false
+	  positives. A single ICMP packet is lost sometimes, after all...
+	- corrected tactical.py - missing key in "stati" dictionary
+
+------------------------------------------------------------------------
+
+August 2004
+v1.0.1 to v1.0.2
+    * Volker Tanger <volker.tanger@wyae.de>
+	- removed (irrelevant but annoying) bug with VERSION setting
+	- removed bug in shell check
+	- removed absolute (and programming-specific) path for HTTP check
+	- added cron handler	
+
+------------------------------------------------------------------------
+
+July 2004
+v1.0.0 to v1.0.1
+    * Volker Tanger <volker.tanger@wyae.de>
+	- added documentation and published 
+
+------------------------------------------------------------------------
+
+late 2003
+(started the project)
+    * Volker Tanger <volker.tanger@wyae.de>
+	- wrote the "core system" and mail alerts
+	- started into the web interface
+
+------------------------------------------------------------------------
