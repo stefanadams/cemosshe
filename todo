@@ -1,3 +1,8 @@
+* 2011-10-12
+Move the series of functions to a location in /etc or something so that
+this can be easily upgraded
+
+* pre-2011-10-12
 from muninlite
 
 
