@@ -27,7 +27,7 @@
 #############################################################################
 
 
-CEMOSSHEVERSION="11.10.12"
+CEMOSSHEVERSION="11.10.13"
 
 #---------------------------------------------------------
 # init library and files
@@ -36,10 +36,18 @@ CEMOSSHEVERSION="11.10.12"
 DATE=`date +%Y-%m-%d`
 TIME=`date +%H:%M:%S`
 
+[ -z "$SYSTEMGROUP" ] && [ -e /etc/groupname ] && SYSTEMGROUP=`cat /etc/groupname`
+[ -z "$SYSTEMNAME" ] && SYSTEMNAME=`/bin/hostname -f`
+[ -z "$SYSTEMGROUP" ] && SYSTEMNAME=`echo $RANDOM$RANDOM | md5sum | cut -d\  -f1`
+[ -z "$SYSTEMNAME" ] && SYSTEMNAME=`echo $RANDOM$RANDOM | md5sum | cut -d\  -f1`
+
+[ -z "$CEMOSSHEDIR" ] && CEMOSSHEDIR=`dirname $0`
+[ -z "$DATADIR" ] && DATADIR=$CEMOSSHEDIR/Data
+[ -z "$TEMPDIR" ] && TEMPDIR=/tmp
+[ -z "$WWWDIR" ] && WWWDIR="$DATADIR"
+
 CEMOSSHELOG=`date +"$TEMPDIR/cemosshelog_%Y-%m-%d_%Hh%M"`
 
-WWWDIR="$DATADIR"
-[ -z "$SYSTEMGROUP" ] && SYSTEMGROUP=`/bin/hostname -d`
 mkdir -p "$DATADIR" "$WWWDIR"
 
 #############################################################################

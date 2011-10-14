@@ -8,11 +8,11 @@
 #=========================================================
 #=========================================================
 
-SYSTEMNAME=`/bin/hostname -f`
-SYSTEMGROUP=`cat /etc/groupname`
-
-CEMOSSHEDIR=`dirname $(readlink -f $0)`
-DATADIR=$CEMOSSHEDIR/Data
+# Defaults are set in function.cemosshe
+SYSTEMNAME=;
+SYSTEMGROUP=;
+CEMOSSHEDIR=;
+DATADIR=;
 TEMPDIR=/tmp
 
 NETWAIT=5	# seconds timeout for network service check
@@ -42,6 +42,7 @@ PROPERTYGROUP="Snapshots"
 SnapshotsCheck /backup/snapshots 2 5 2 5     # Code fqdn lastrunwarn lastrunalert lastokwarn lastokalert
 
 PROPERTYGROUP="System Checks"
+HostsFileCheck
 DynamicIPCheck
 DaysUpCheck 10 3	# days up less than: warn / alert (days)
 

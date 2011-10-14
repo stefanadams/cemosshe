@@ -81,6 +81,22 @@ function SnapshotsCheck () {
 }
 
 #---------------------------------------------------------
+# HostsFileCheck
+#---------------------------------------------------------
+function HostsFileCheck () {
+    MossheLog "HostsFileCheck"
+    HOST=`/bin/hostname`
+    FQDN=`/bin/hostname -f`
+    DOMAIN=`/bin/hostname -d`
+    if [ "$HOST.$DOMAIN" = "$FQDN" ]; then
+        STATUS=OK
+    else
+        STATUS=WARN
+    fi
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;HostsFileCheck;$STATUS;0;$HOST . $DOMAIN" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
+#---------------------------------------------------------
 # Days Up Check - warn;alert - days
 #---------------------------------------------------------
 function DaysUpCheck () {

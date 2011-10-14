@@ -50,6 +50,16 @@ please check there for updates prior to submitting patches!
 
 ------------------------------------------------------------------------
 
+v11.10.13
+    Stefan Adams <stefan@cogentinnovators.com>
+        - Updated version
+        - Fixed some spelling errors
+        - Fixed syntax error in github issue #1
+        - updated DynamicIPCheck and UbuntuUpdatesAvailable
+        - disabled default push to central site
+        - added todo item
+        - Better handling of SYSTEMGROUP and SYSTEMNAME defaults
+
 v11.10.12
     !!! FORKED MoSShE 11.6.27 to CeMoSShE !!!
     Stefan Adams <stefan@cogentinnovators.com>
