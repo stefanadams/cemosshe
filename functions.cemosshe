@@ -228,7 +228,7 @@ function Finalize () {
 # PushResults method server:port username identityfile
 #---------------------------------------------------------
 function PushResults () {
-    if [ "$1" = "sftp" -a `which sftp` ]; then
+    if [ "$1" = "sftp" ] && [ `which sftp` ]; then
         MossheLog "PushResults $1 $2 $3 $4"
         CENTRALCEMOSSHE=`echo $2 | cut -d: -f1`
         CENTRALCEMOSSHE_PORT=`echo $2 | cut -d: -f2`
@@ -241,7 +241,7 @@ function PushResults () {
         echo sftp -oPort="${CENTRALCEMOSSHE_PORT:-22}" -oIdentityFile="${CENTRALCEMOSSHE_IDENTITYFILE:-/etc/cemosshe/rsa}" "${CENTRALCEMOSSHE_USER:-cemosshe}"@"$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
         echo -e "-mkdir csv/$SYSTEMGROUP\n-mkdir csv/$SYSTEMGROUP/$SYSTEMNAME\n-rename csv/$SYSTEMGROUP/$SYSTEMNAME/details.csv csv/$SYSTEMGROUP/$SYSTEMNAME/details.csv~\n-rename csv/$SYSTEMGROUP/$SYSTEMNAME/sla.csv csv/$SYSTEMGROUP/$SYSTEMNAME/sla.csv~\nput $DATADIR/details.csv csv/$SYSTEMGROUP/$SYSTEMNAME\nput $DATADIR/sla.csv csv/$SYSTEMGROUP/$SYSTEMNAME\nchmod 0664 csv/$SYSTEMGROUP/$SYSTEMNAME/*" | \
             sftp -oPort="${CENTRALCEMOSSHE_PORT:-22}" -oIdentityFile="${CENTRALCEMOSSHE_IDENTITYFILE:-/etc/cemosshe/rsa}" "${CENTRALCEMOSSHE_USER:-cemosshe}"@"$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
-    elif [ "$1" = "curl" -a `which curl` ]; then
+    elif [ "$1" = "curl" ] && [ `which curl` ]; then
         MossheLog "PushResults $1 $2 $3"
         CENTRALCEMOSSHE="$2"
         CENTRALCEMOSSHE_PASS="$3"
