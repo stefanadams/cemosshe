@@ -49,6 +49,7 @@ Requirements for CeMoSSHe:
 	* standard Unix text tools (fgrep, cut, head, mail, time, date,
 	  paste, sed...)
 	* "netcat" networking tool
+	* curl >= 7.18.0
 	
 for single checks only if performed:
 	* "pstree" for tree view of process list

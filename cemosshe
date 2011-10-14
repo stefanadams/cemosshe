@@ -122,7 +122,8 @@ Finalize
 LogTo /var/log/cemosshe/cemosshe_log Weekly		# continuously log to filename, week is appended automatically
 
 #PushResults sftp cemosshe.cogent-it.com
-PushResults curl http://cemosshe.cogent-it.com password
+# You can push to cemosshe.cogent-it.com, but you may not want to
+#PushResults curl http://cemosshe.cogent-it.com password
 
 # Always make this the last step
 rm -f $TEMPDIR/tmp.$$.collected.tmp $TEMPDIR/cemosshe_lock.*
