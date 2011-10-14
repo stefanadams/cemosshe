@@ -42,9 +42,13 @@ function ForceStatus () {
 #---------------------------------------------------------
 function DynamicIPCheck () {
     MossheLog "DynamicIPCheck"
-    STATUS=OK
-    if ps axf | grep -q dhclient; then STATUS=ALERT; fi
-    IP=`/sbin/ifconfig $(ps -eo args | grep dhclient | grep -v grep | awk '{print $NF}') | grep 'inet addr:'| cut -d: -f2 | awk '{ print $1}' | sed -e 's/$/<br \/>/' | paste -s`
+    unset STATUS IP
+    if ps axf | grep -q dhclient | grep -q -v grep; then
+        STATUS=ALERT
+        IP=`/sbin/ifconfig $(ps -eo args | grep dhclient | grep -v grep | awk '{print $NF}') | grep 'inet addr:'| cut -d: -f2 | awk '{ print $1}' | sed -e 's/$/<br \/>/' | paste -s`
+    else
+        STATUS=OK
+    fi
     echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;DynamicIPCheck;$STATUS;0;$IP" >> $TEMPDIR/tmp.$$.collected.tmp
 }
 
@@ -98,10 +102,17 @@ function DaysUpCheck () {
 function UbuntuUpdatesAvailable () {
     MossheLog "UbuntuUpdatesAvailable"
     # Ubuntu
-    if [ -x /usr/lib/update-notifier/update-motd-updates-available ]; then
-        RR=`/usr/lib/update-notifier/update-motd-updates-available | sed 's/\*/#/g' | sed -e 's/$/<br \/>/' | paste -s`
-        [ -z "$RR" ] && STATUS1=OK || STATUS1=ALERT
-        [ -z "$RR" ] && STATUS2=0 || STATUS2=1
+    if [ -x /usr/lib/update-notifier/apt-check ]; then
+        A=`/usr/lib/update-notifier/apt-check 2>&1 | cut -d';' -f1`
+        S=`/usr/lib/update-notifier/apt-check 2>&1 | cut -d';' -f2`
+        RR=`/usr/lib/update-notifier/apt-check 2>&1 --human-readable | sed -e 's/$/<br \/>/' | paste -s`
+        if [ "${S:-0}" -ne 0 ]; then
+            STATUS1=ALERT; STATUS2=${S:-0}
+        elif [ "${A:-0}" -ne 0 ]; then
+            STATUS1=WARN; STATUS2=${A:-0}
+        else
+            STATUS1=OK; STATUS2=0
+        fi
         RR=${RR:-No updates available}
         echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Updates Available?;$STATUS1;$STATUS2;$RR" >> $TEMPDIR/tmp.$$.collected.tmp
     fi
