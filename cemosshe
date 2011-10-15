@@ -21,7 +21,7 @@ NETWAIT=5	# seconds timeout for network service check
 #=========================================================
 # Startup
 #=========================================================
-. $CEMOSSHEDIR/functions.cemosshe
+. `dirname $0`/functions.cemosshe
 
 MossheSelfCheck $0
 MossheInstall
