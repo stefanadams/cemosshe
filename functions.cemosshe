@@ -113,7 +113,7 @@ function MossheInstall () {
     [ -e "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe" ] && chown root.root "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe"
     [ -e /etc/cron.d/cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.d_cemosshe" /etc/cron.d/cemosshe
     [ -e /etc/cron.d/cemosshe ] && chown root.root /etc/cron.d/cemosshe
-    [ -e "$CEMOSSHEDIR/cron/cron.d_cemosshe" ] && chmod 0755 "$CEMOSSHEDIR/cron/cron.d_cemosshe"
+    [ -e "$CEMOSSHEDIR/cron/cron.d_cemosshe" ] && chmod 0644 "$CEMOSSHEDIR/cron/cron.d_cemosshe"
     [ -e "$CEMOSSHEDIR/cron/cron.d_cemosshe" ] && chown root.root "$CEMOSSHEDIR/cron/cron.d_cemosshe"
     [ -e /root/.ssh/cemosshe_rsa ] && cp -af /root/.ssh/cemosshe_rsa /etc/cemosshe/rsa
     [ -e /root/.ssh/cemosshe_rsa.pub ] && cp -af /root/.ssh/cemosshe_rsa.pub /etc/cemosshe/rsa.pub
