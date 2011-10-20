@@ -147,6 +147,7 @@ function MossheInfo () {
     DfShow
     FreeShow
     IfconfigShow
+    PublicIPShow
     SSHShow
     PstreeShow
     RouteShow

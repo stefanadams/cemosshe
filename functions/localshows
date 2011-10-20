@@ -1,5 +1,15 @@
 . "$CEMOSSHEDIR/functions/localshows__lib.net-tools"
 
+function PublicIPShow () {
+    CHECKIP=${1:-http://checkip.cog-ent.com}
+    MossheLog "PublicIPShow $1"
+    if [ `which curl` ]; then
+        OUT=`curl $CHECKIP | sed -e 's/$/<br \/>/' | paste -s`
+        OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;curl $CHECKIP;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+    fi
+}
+
 function PstreeShow () {
     if [ `which pstree` ]; then
         OUT=`pstree -capuA | sed -e 's/$/<br \/>/' | paste -s`
