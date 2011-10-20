@@ -117,8 +117,6 @@ function MossheInstall () {
     [ -e "$CEMOSSHEDIR/cron/cron.d_cemosshe" ] && chown root.root "$CEMOSSHEDIR/cron/cron.d_cemosshe"
     [ -e /root/.ssh/cemosshe_rsa ] && cp -af /root/.ssh/cemosshe_rsa /etc/cemosshe/rsa
     [ -e /root/.ssh/cemosshe_rsa.pub ] && cp -af /root/.ssh/cemosshe_rsa.pub /etc/cemosshe/rsa.pub
-    [ -x /etc/init.d/cron ] && /etc/init.d/cron restart
-    [ -x /etc/init.d/crond ] && /etc/init.d/crond restart
 }
 function MossheUninstall () {
     [ -e "$CEMOSSHEDIR/uninstall" ] && rm -rf "$CEMOSSHEDIR/uninstall"
