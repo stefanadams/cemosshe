@@ -79,7 +79,7 @@ FileTooOld /var/log/syslog 90		# file older than 90 minutes
 #FileTooOld /backup/ldap.ldif 86400     # Last ldapsearch or slapcat LDAP backup older than 1 day
 #
 #FileTooBig /var/log/auth 9000 	# file bigger than 9,000 KBytes (= 9 MB)
-FileTooBig /var/log/syslog 9000 # file bigger than 9,000 KBytes (= 9 MB)
+FileTooBig /var/log/syslog 500000 # file bigger than 9,000 KBytes (= 9 MB)
 
 #MailqCheck 20 60
 
