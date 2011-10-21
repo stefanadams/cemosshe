@@ -6,7 +6,7 @@ function PublicIPShow () {
     if [ `which curl` ]; then
         OUT=`curl $CHECKIP 2>/dev/null | sed -e 's/$/<br \/>/' | paste -s`
         OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;curl $CHECKIP;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Public IP;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
     fi
 }
 
