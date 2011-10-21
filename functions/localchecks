@@ -40,16 +40,18 @@ function ForceStatus () {
 #---------------------------------------------------------
 # DynamicIPCheck - ALERT if dhclient is running, which means that this server may have a dynamic IP assigned to it
 #---------------------------------------------------------
-function DynamicIPCheck () {
-    CemossheLog "DynamicIPCheck"
+function StaticIPCheck () {
+    CemossheLog "StaticIPCheck"
     unset STATUS IP
     if ps axf | grep -q dhclient | grep -q -v grep; then
         STATUS=ALERT
         IP=`/sbin/ifconfig $(ps -eo args | grep dhclient | grep -v grep | awk '{print $NF}') | grep 'inet addr:'| cut -d: -f2 | awk '{ print $1}' | sed -e 's/$/<br \/>/' | paste -s`
+        IP="DHCP:<br />$IP"
     else
         STATUS=OK
+        IP="Static"
     fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;DynamicIPCheck;$STATUS;0;$IP" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;StaticIPCheck;$STATUS;0;$IP" >> $TEMPDIR/tmp.$$.collected.tmp
 }
 
 #---------------------------------------------------------
