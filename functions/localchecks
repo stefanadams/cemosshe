@@ -33,7 +33,7 @@
 #############################################################################
 
 function ForceStatus () {
-    MossheLog "ForceStatus $1 $2"
+    CemossheLog "ForceStatus $1 $2"
     echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;ForceStatus $1;$2;0;" >> $TEMPDIR/tmp.$$.collected.tmp
 }
 
@@ -41,7 +41,7 @@ function ForceStatus () {
 # DynamicIPCheck - ALERT if dhclient is running, which means that this server may have a dynamic IP assigned to it
 #---------------------------------------------------------
 function DynamicIPCheck () {
-    MossheLog "DynamicIPCheck"
+    CemossheLog "DynamicIPCheck"
     unset STATUS IP
     if ps axf | grep -q dhclient | grep -q -v grep; then
         STATUS=ALERT
@@ -57,10 +57,10 @@ function DynamicIPCheck () {
 #---------------------------------------------------------
 function SnapshotsCheck () {
     [ -z "$1" ] && return
-    MossheLog "SnapshotCheck $1"
+    CemossheLog "SnapshotCheck $1"
     [ -d "$1" ] && for i in $(find "$1" -mindepth 2 -maxdepth 2 -type d | cut -d/ -f4,5); do
         STORE="$1/$i"
-        MossheLog "SnapshotCheck $STORE"
+        CemossheLog "SnapshotCheck $STORE"
         # Minimum minutes between snapshots
         unset LASTRUN LASTOK
         [ -e "$STORE/latest" ] && LASTRUN=$(readlink "$STORE/latest" | sed -e 's#^.*\([0-9]\{8\}\)\([0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*#\1 \2#')
@@ -84,7 +84,7 @@ function SnapshotsCheck () {
 # HostsFileCheck
 #---------------------------------------------------------
 function HostsFileCheck () {
-    MossheLog "HostsFileCheck"
+    CemossheLog "HostsFileCheck"
     HOST=`/bin/hostname`
     FQDN=`/bin/hostname -f`
     DOMAIN=`/bin/hostname -d`
@@ -100,7 +100,7 @@ function HostsFileCheck () {
 # Days Up Check - warn;alert - days
 #---------------------------------------------------------
 function DaysUpCheck () {
-    MossheLog "DaysUpCheck"
+    CemossheLog "DaysUpCheck"
     DAYSUP=$(($(cut -d '.' -f 1 /proc/uptime)/60/60/24))
     if [ "$DAYSUP" -le $2 ]; then
         STATUS="ALERT"
@@ -116,7 +116,7 @@ function DaysUpCheck () {
 # Ubuntu Updates Available - if true alert; if false ok
 #---------------------------------------------------------
 function UbuntuUpdatesAvailable () {
-    MossheLog "UbuntuUpdatesAvailable"
+    CemossheLog "UbuntuUpdatesAvailable"
     # Ubuntu
     if [ -x /usr/lib/update-notifier/apt-check ]; then
         A=`/usr/lib/update-notifier/apt-check 2>&1 | cut -d';' -f1`
@@ -138,7 +138,7 @@ function UbuntuUpdatesAvailable () {
 # Ubuntu Release Upgrade Check - if true alert; if false ok
 #---------------------------------------------------------
 function UbuntuReleaseUpgrade () {
-    MossheLog "UbuntuReleaseUpgrade"
+    CemossheLog "UbuntuReleaseUpgrade"
     # Ubuntu
     if [ -x /usr/lib/update-manager/release-upgrade-motd ]; then
         RR=`/usr/lib/update-manager/release-upgrade-motd | sed 's/\*/#/g' | sed -e 's/$/<br \/>/' | paste -s`
@@ -153,7 +153,7 @@ function UbuntuReleaseUpgrade () {
 # Ubuntu Reboot Required Check - if true alert; if false ok
 #---------------------------------------------------------
 function UbuntuRebootRequired () {
-    MossheLog "UbuntuRebootRequired"
+    CemossheLog "UbuntuRebootRequired"
     # Ubuntu
     if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
         RR=`/usr/lib/update-notifier/update-motd-reboot-required | sed 's/\*/#/g' | sed -e 's/$/<br \/>/' | paste -s`
@@ -173,7 +173,7 @@ function UbuntuRebootRequired () {
 # HDD-Check - device;warn;alert - MB free
 #---------------------------------------------------------
 function HDCheck () {
-    MossheLog "HDCheck $1"
+    CemossheLog "HDCheck $1"
     HD=$1
     typeset -i WARN ALERT; WARN=$2; ALERT=$3
     typeset -i VALUE
@@ -202,7 +202,7 @@ function HDCheck () {
 # FileCheck: does file exist (e.g. Unix socket)
 #---------------------------------------------------------
 function FileCheck () {
-    MossheLog "FileCheck $1"
+    CemossheLog "FileCheck $1"
      FN="$1"
 
      if [ -e $FN ]; then
@@ -222,7 +222,7 @@ function FileCheck () {
 # FileTooOld: file last changed more than ... minutes ago?
 #---------------------------------------------------------
 function FileTooOld () {
-    MossheLog "FileTooOld $1"
+    CemossheLog "FileTooOld $1"
     FILENAME=$1
     MAXAGE=$2
 
@@ -255,7 +255,7 @@ function FileTooOld () {
 # FileTooBig: filesize bigger than WARN KiloBytes
 #---------------------------------------------------------
 function FileTooBig () {
-    MossheLog "FileTooBig $1"
+    CemossheLog "FileTooBig $1"
     FILENAME=$1
     typeset -i WARN=$2
 
@@ -291,7 +291,7 @@ function FileTooBig () {
 # LoadCheck 5min: Warning / Alert
 #---------------------------------------------------------
 function LoadCheck () {
-    MossheLog "LoadCheck"
+    CemossheLog "LoadCheck"
     typeset -i WARN ALERT; WARN=$1; ALERT=$2
     typeset -i LOAD
     MESSAGE=`cat /proc/loadavg | cut -d " " -f 3 | sed -e "s/ //g"`
@@ -308,7 +308,7 @@ function LoadCheck () {
 # LoadPercentHektoCheck 5min: Warning / Alert
 #---------------------------------------------------------
 function LoadHektoCheck () {
-    MossheLog "LoadCheck"
+    CemossheLog "LoadCheck"
     typeset -i WARN ALERT; WARN=$1; ALERT=$2
     typeset -i LOAD
     MESSAGE=`cat /proc/loadavg | cut -d " " -f 3 | sed -e "s/ //g"`
@@ -325,7 +325,7 @@ function LoadHektoCheck () {
 # Processes: Warning / Alert
 #---------------------------------------------------------
 function ProcessCheck () {
-    MossheLog "ProcessCheck"
+    CemossheLog "ProcessCheck"
     typeset -i WARN ALERT; WARN=$1; ALERT=$2
     typeset -i PROCESSES
     PROCESSES=`ps -A | wc -l`
@@ -341,7 +341,7 @@ function ProcessCheck () {
 # Zombie Processes: Warning Alert
 #---------------------------------------------------------
 function ZombieCheck () {
-    MossheLog "ZombieCheck"
+    CemossheLog "ZombieCheck"
     typeset -i WARN ALERT; WARN=$1; ALERT=$2
     typeset -i PROCESSES
     TMPFILE="$TEMPDIR/tmp.$$.$HOSTNAME.PSSTATUS"
@@ -372,7 +372,7 @@ function ZombieCheck () {
 # ProcCheck: does a process with this string run?
 #---------------------------------------------------------
 function ProcCheck () {
-    MossheLog "ProcCheck"
+    CemossheLog "ProcCheck"
      typeset -i PSNUM=`ps ax | fgrep "$1" | wc -l`
 
      if [ $PSNUM -gt 0 ]; then
@@ -390,7 +390,7 @@ function ProcCheck () {
 # Users: Warning interact.shell / Critical root+shell/su
 #---------------------------------------------------------
 function ShellCheck () {
-    MossheLog "ShellCheck"
+    CemossheLog "ShellCheck"
     typeset -i RMAX UMAX; RMAX=$1; UMAX=$2
     typeset -i RUSERS RUSERSB RUSERSS
     typeset -i USERS
@@ -417,7 +417,7 @@ function ShellCheck () {
 # Memory: min. free (buffer/cache corrected)
 #---------------------------------------------------------
 function MemCheck () {
-    MossheLog "MemCheck"
+    CemossheLog "MemCheck"
     if [ -z `which free` ]; then
         echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;memory (general);UNDEF;0;FREE not installed - cannot perform MEMORY/RAM check" >> $TEMPDIR/tmp.$$.collected.tmp
     else
@@ -444,7 +444,7 @@ function MemCheck () {
 # Swap:  page in/out per second
 #---------------------------------------------------------
 function SwapCheck () {
-    MossheLog "SwapCheck"
+    CemossheLog "SwapCheck"
     if [ -z `which vmstat` ]; then
         echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;swapping;UNDEF;0;VMSTAT not installed - cannot perform swap activity check" >> $TEMPDIR/tmp.$$.collected.tmp
     else
@@ -478,7 +478,7 @@ function SwapCheck () {
 # Printers: Queuename / max queue size (999=offline)
 #---------------------------------------------------------
 function PrintCheck () {
-    MossheLog "PrintCheck"
+    CemossheLog "PrintCheck"
     if [ -z `which lpq` ]; then
         echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;printer (general);UNDEF;0;LPQ not installed - cannot perform PRINTER check" >> $TEMPDIR/tmp.$$.collected.tmp
     else
@@ -511,7 +511,7 @@ function PrintCheck () {
 # Mail-Queue: max queue size (warn alert)
 #---------------------------------------------------------
 function MailqCheck () {
-    MossheLog "MailqCheck"
+    CemossheLog "MailqCheck"
     if [ -z `which mailq` ]; then
         echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;mailq (general);UNDEF;0;MAILQ not installed - cannot perform MailQueue check"  >> $TEMPDIR/tmp.$$.collected.tmp
     else
@@ -547,7 +547,7 @@ function MailqCheck () {
 # Uses mbmon program (http://freshmeat.net/projects/xmbmon)
 #---------------------------------------------------------
 function MBMonCheck () {
-    MossheLog "MBMonCheck $1 $4"
+    CemossheLog "MBMonCheck $1 $4"
     PARAM=$1                # TEMP0, TEMP1...
     SWARNVAL=$2             # 38.0
     SALERTVAL=$3            # 40.0
@@ -587,7 +587,7 @@ function MBMonCheck () {
 # Uses "sensors" program (lm-sensors packet, first run "sensors-probe")
 #---------------------------------------------------------
 function HardwareSensor () {      # Match  Description  WarnTemp  AlertTemp
-    MossheLog "HardwareSensor $1 $2"
+    CemossheLog "HardwareSensor $1 $2"
     typeset PARAM=$1
     DESCR=$2
     typeset -i WARN=$3
@@ -617,7 +617,7 @@ function HardwareSensor () {      # Match  Description  WarnTemp  AlertTemp
 # Uses "sensors" program (lm-sensors packet, first run "sensors-probe")
 #---------------------------------------------------------
 function HardwareTemp () {      # TempSensorNr  WarnTemp  AlertTemp
-    MossheLog "HardwareTemp $1 $2"
+    CemossheLog "HardwareTemp $1 $2"
     typeset -i PARAM=$1
     DESCR=$2
     typeset -i WARN=$3
@@ -647,7 +647,7 @@ function HardwareTemp () {      # TempSensorNr  WarnTemp  AlertTemp
 # Uses "sensors" program (lm-sensors packet, first run "sensors-probe")
 #---------------------------------------------------------
 function HardwareFan () {       # FanNr "Descr" LowLimit HiLimit
-    MossheLog "HardwareFan $1 $2"
+    CemossheLog "HardwareFan $1 $2"
     PARAM=$1
     DESCR=$2
     LowLim=$3
@@ -677,7 +677,7 @@ function HardwareFan () {       # FanNr "Descr" LowLimit HiLimit
 # SmartMonHealth:  health status passed or not  DEVTYPE   DEVICE
 #---------------------------------------------------------
 function SmartMonHealth () {
-    MossheLog "SmartMonHealth $1 $2"
+    CemossheLog "SmartMonHealth $1 $2"
     DEVTYPE=$1
     DEVICE=$2
 
@@ -704,7 +704,7 @@ function SmartMonHealth () {
 # Raid3ware:  health status passed or not   ControllerNo.  Partition
 #---------------------------------------------------------
 function Raid3ware () {
-    MossheLog "Raid3ware $1 $2"
+    CemossheLog "Raid3ware $1 $2"
     CTRL=$1
     UNIT=$2
 
@@ -736,7 +736,7 @@ function Raid3ware () {
 #	WARN when syncing, ALERT when a partition has failed.
 #---------------------------------------------------------
 function RaidCheck () {
-    MossheLog "RaidCheck"
+    CemossheLog "RaidCheck"
     typeset -i NUM=0
     MDSTAT="/proc/mdstat"
     if ! [ -f $MDSTAT ]; then
@@ -776,7 +776,7 @@ function RaidCheck () {
 # NetworkErrors:  interface  WARN:percentage  ALERT:percentage
 #---------------------------------------------------------
 function NetworkErrorsCheck () {
-    MossheLog "NetworkErrorsCheck $1"
+    CemossheLog "NetworkErrorsCheck $1"
     if [ -z `which netstat` ]; then
         echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;networktraffic (general);UNDEF;0;NETSTAT not installed - cannot perform NETWORKTRAFFIC check" >> $TEMPDIR/tmp.$$.collected.tmp
     else
@@ -830,7 +830,7 @@ function NetworkErrorsCheck () {
 # NetworkTraffic:  interface  WARN:byte/s  ALERT:byte/s
 #---------------------------------------------------------
 function NetworkTrafficCheck () {
-    MossheLog "NetworkTrafficCheck $1"
+    CemossheLog "NetworkTrafficCheck $1"
     if [ -z `which netstat` ]; then
         echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;networktraffic (general);UNDEF;0;NETSTAT not installed - cannot perform NETWORKTRAFFIC check" >> $TEMPDIR/tmp.$$.collected.tmp
     else
@@ -882,7 +882,7 @@ function NetworkTrafficCheck () {
 # 	if using wildcards escape the filename-pattern with quotes when calling
 #---------------------------------------------------------
 function LogEntryCheck () {
-    MossheLog "LogEntryCheck $1 "
+    CemossheLog "LogEntryCheck $1 "
     NAME="$1"
     MATCH="$2"
     FILE="$3"
@@ -911,7 +911,7 @@ function LogEntryCheck () {
 # CheckFileChanges  KNOWNFILE  CHECKEDFILE:  are these the same?
 #---------------------------------------------------------
 function CheckFileChanges () {
-    MossheLog "CheckFileChanges $1"
+    CemossheLog "CheckFileChanges $1"
     KNOWNSHORT=$1;
     KNOWNF="$DATADIR/CompareFiles/$KNOWNSHORT"
     ORIGF=$2;
@@ -951,7 +951,7 @@ function CheckFileChanges () {
 # CheckConfigChanges  KNOWNFILE  "COMMAND+PARAM":  are these the same?
 #---------------------------------------------------------
 function CheckConfigChanges () {
-    MossheLog "CheckConfigChanges $1"
+    CemossheLog "CheckConfigChanges $1"
     KNOWNSHORT=$1;
     KNOWNF="$DATADIR/CompareFiles/$KNOWNSHORT"
     shift
