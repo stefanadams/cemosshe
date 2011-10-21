@@ -1,9 +1,9 @@
+#!/bin/sh
+
 # Install with:
 #   ln -s /usr/local/lib/cemosshe/cron.daily_logrotate-cemosshe /etc/cron.d/logrotate-cemosshe (No periods allowed in cron files)
 #   chmod 0755 /usr/local/lib/cemosshe/cron.daily_logrotate-cemosshe
 #   chown root.root /usr/local/lib/cemosshe/cron.daily_logrotate-cemosshe
-
-#!/bin/sh
 
 # first compress
 

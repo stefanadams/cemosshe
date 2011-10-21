@@ -1,4 +1,5 @@
 #!/bin/sh
+# v11.10.21
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
@@ -27,7 +28,6 @@
 #############################################################################
 
 
-CEMOSSHEVERSION="11.10.13"
 
 #---------------------------------------------------------
 # init library and files
@@ -45,15 +45,17 @@ TIME=`date +%H:%M:%S`
 [ -z "$DATADIR" ] && DATADIR=$CEMOSSHEDIR/Data
 [ -z "$TEMPDIR" ] && TEMPDIR=/tmp
 [ -z "$WWWDIR" ] && WWWDIR="$DATADIR"
+[ -z "$NETWAIT" ] && NETWAIT=5
 
 CEMOSSHELOG=`date +"$TEMPDIR/cemosshelog_%Y-%m-%d_%Hh%M"`
+CEMOSSHEVERSION=`cat $CEMOSSHEDIR/version`
 
 mkdir -p "$DATADIR" "$WWWDIR"
 
 #############################################################################
 ### 	MoSShE internal functions
 #############################################################################
-function MossheLog () {
+function CemossheLog () {
     date +"%Y-%m-%d %H:%M:%S - $@ " >> $CEMOSSHELOG
     [[ -t "0" || -p /dev/stdin ]] && date +"%Y-%m-%d %H:%M:%S - $@ "
 }
@@ -61,8 +63,8 @@ function MossheLog () {
 #---------------------------------------------------------
 # Self-Check & Self-Locking
 #---------------------------------------------------------
-function MossheSelfCheck () {
-    MossheLog "MossheSelfCheck $1 $DATE $TIME"
+function CemossheSelfCheck () {
+    CemossheLog "CemossheSelfCheck $1 $DATE $TIME"
 
     if [ -f $TEMPDIR/cemosshe_lock.5 ]; then
         logger -t MoSShE -p ${FACILITY:-local0}.err "$SYSTEMGROUP: $SYSTEMNAME - MoSShE in deadlock"
@@ -79,7 +81,7 @@ function MossheSelfCheck () {
 
     LOCKSEXIST=`ls $TEMPDIR/cemosshe_lock.? 2>/dev/null`
     if [ -n "$LOCKSEXIST" ]; then
-        echo "MossheSelfCheck failed: MoSShE locked.  "
+        echo "CemossheSelfCheck failed: MoSShE locked.  "
         echo "Self-terminating.  Fix with rm -f $TEMPDIR/cemosshe_lock.?" 
         echo " "
         echo " "
@@ -89,14 +91,16 @@ function MossheSelfCheck () {
         kill "$$"
     fi
     rm -f $TEMPDIR/cemosshelog_*
-    MossheLog "MossheSelfCheck - successfully established lock"
+    CemossheLog "CemossheSelfCheck - successfully established lock"
     date > $TEMPDIR/cemosshe_lock.0
 }
 
 #---------------------------------------------------------
 # Install / Uninstall the MoSSHe environment
 #---------------------------------------------------------
-function MossheInstall () {
+function CemossheInstall () {
+    CemossheLog "CemossheInstall"
+
     [ -e /etc/cemosshe-firstrun ] || date +"%Y-%m-%d" > /etc/cemosshe-firstrun
     if [ ! -e /etc/host-notes ]; then
         echo "System Notes for Display in MoSSHe" > /etc/host-notes
@@ -106,19 +110,17 @@ function MossheInstall () {
         [ -e /etc/ubuntu-firstrun ] && echo "Ubuntu Firstrun: "`cat /etc/ubuntu-firstrun` >> /etc/host-notes
     fi
     mkdir -p /etc/cemosshe/functions /usr/local/etc/cemosshe/functions /var/log/cemosshe "$DATADIR"
-    [ -e "$CEMOSSHEDIR/cemosshe" ] && chmod 0755 "$CEMOSSHEDIR/cemosshe"
-    [ -e "$CEMOSSHEDIR/cemosshe" ] && chown root.root "$CEMOSSHEDIR/cemosshe"
+    [ -e /etc/cemosshe/cemosshe.conf ] || cp -a "$CEMOSSHEDIR/cemosshe.conf" /etc/cemosshe/cemosshe.conf
     [ -e /etc/cron.daily/logrotate-cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe" /etc/cron.daily/logrotate-cemosshe
-    [ -e "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe" ] && chmod 0755 "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe"
-    [ -e "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe" ] && chown root.root "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe"
+    [ -e /etc/cron.daily/upgrade-cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.daily_upgrade-cemosshe" /etc/cron.daily/upgrade-cemosshe
     [ -e /etc/cron.d/cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.d_cemosshe" /etc/cron.d/cemosshe
-    [ -e /etc/cron.d/cemosshe ] && chown root.root /etc/cron.d/cemosshe
-    [ -e "$CEMOSSHEDIR/cron/cron.d_cemosshe" ] && chmod 0644 "$CEMOSSHEDIR/cron/cron.d_cemosshe"
-    [ -e "$CEMOSSHEDIR/cron/cron.d_cemosshe" ] && chown root.root "$CEMOSSHEDIR/cron/cron.d_cemosshe"
     [ -e /root/.ssh/cemosshe_rsa ] && cp -af /root/.ssh/cemosshe_rsa /etc/cemosshe/rsa
     [ -e /root/.ssh/cemosshe_rsa.pub ] && cp -af /root/.ssh/cemosshe_rsa.pub /etc/cemosshe/rsa.pub
+    echo Installed $CEMOSSHEVERSION
 }
-function MossheUninstall () {
+function CemossheUninstall () {
+    CemossheLog "CemossheUninstall"
+
     [ -e "$CEMOSSHEDIR/uninstall" ] && rm -rf "$CEMOSSHEDIR/uninstall"
     mkdir -p "$CEMOSSHEDIR/uninstall"
     [ -e /etc/cemosshe-firstrun ] && mv /etc/cemosshe-firstrun /etc/host-notes "$CEMOSSHEDIR/uninstall"
@@ -128,35 +130,16 @@ function MossheUninstall () {
     [ -e "$DATADIR" ] && mv "$DATADIR" "$CEMOSSHEDIR/uninstall"
     rm -f /etc/cron.daily/logrotate-cemosshe /etc/cron.d/cemosshe
     rm -f $TEMPDIR/cemosshe_lock.*
-    echo Uninstalled MoSSHE $CEMOSSHEVERSION
-    exit
+    echo Uninstalled $CEMOSSHEVERSION
 }
+function CemossheRun () {
+    CemossheLog "CemossheRun $1"
 
-#---------------------------------------------------------
-# Sample collection of the localshows.  Overwrite by putting this function in
-# /etc/cemosshe/functions
-#---------------------------------------------------------
-function MossheInfo () {
-    HostNotesShow
-    IsVirtualShow
-    SysInfoShow
-    DateShow
-    UptimeShow
-    UnameShow
-    WShow
-    DfShow
-    FreeShow
-    IfconfigShow
-    PublicIPShow
-    SSHShow
-    PstreeShow
-    RouteShow
-    LastLoginShow
-    NetstatShow
-    FileShow /etc/issue /etc/hosts /etc/resolv.conf
-    PackagesShow
-    LspciShow
-    LshwShow
+    CONF=${1:-cemosshe}
+    [ -f /etc/cemosshe/$CONF.conf ] || { echo /etc/cemosshe/$CONF.conf not found.  Aborting.; return; }
+    CemossheSelfCheck "$0"
+    . /etc/cemosshe/$CONF.conf
+    rm -f $TEMPDIR/tmp.$$.collected.tmp $TEMPDIR/cemosshe_lock.*	# Always make this the last step
 }
 
 #---------------------------------------------------------
@@ -164,7 +147,7 @@ function MossheInfo () {
 #---------------------------------------------------------
 function Finalize () {
     FACILITY="${1:-local0}"
-    MossheLog "Finalize $FACILITY"
+    CemossheLog "Finalize $FACILITY"
     while read NEW; do
         NDATE=`echo $NEW | cut -d ";" -f 1`
         NTIME=`echo $NEW | cut -d ";" -f 2`
@@ -238,7 +221,7 @@ function Finalize () {
 #---------------------------------------------------------
 function PushResults () {
     if [ "$1" = "sftp" ] && [ `which sftp` ]; then
-        MossheLog "PushResults $1 $2 $3 $4"
+        CemossheLog "PushResults $1 $2 $3 $4"
         CENTRALCEMOSSHE=`echo $2 | cut -d: -f1`
         CENTRALCEMOSSHE_PORT=`echo $2 | cut -d: -f2`
         [ -z "$CENTRALCEMOSSHE_PORT" -o "$CENTRALCEMOSSHE" = "$CENTRALCEMOSSHE_PORT" ] && CENTRALCEMOSSHE_PORT=22
@@ -251,7 +234,7 @@ function PushResults () {
         echo -e "-mkdir csv/$SYSTEMGROUP\n-mkdir csv/$SYSTEMGROUP/$SYSTEMNAME\n-rename csv/$SYSTEMGROUP/$SYSTEMNAME/details.csv csv/$SYSTEMGROUP/$SYSTEMNAME/details.csv~\n-rename csv/$SYSTEMGROUP/$SYSTEMNAME/sla.csv csv/$SYSTEMGROUP/$SYSTEMNAME/sla.csv~\nput $DATADIR/details.csv csv/$SYSTEMGROUP/$SYSTEMNAME\nput $DATADIR/sla.csv csv/$SYSTEMGROUP/$SYSTEMNAME\nchmod 0664 csv/$SYSTEMGROUP/$SYSTEMNAME/*" | \
             sftp -oPort="${CENTRALCEMOSSHE_PORT:-22}" -oIdentityFile="${CENTRALCEMOSSHE_IDENTITYFILE:-/etc/cemosshe/rsa}" "${CENTRALCEMOSSHE_USER:-cemosshe}"@"$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
     elif [ "$1" = "curl" ] && [ `which curl` ]; then
-        MossheLog "PushResults $1 $2 $3"
+        CemossheLog "PushResults $1 $2 $3"
         CENTRALCEMOSSHE="$2"
         CENTRALCEMOSSHE_PASS="$3"
         CENTRALCEMOSSHE_USER="${4:-$SYSTEMGROUP}"
@@ -266,7 +249,7 @@ function PushResults () {
 # LogTo filename
 #---------------------------------------------------------
 function LogTo () {
-    MossheLog "LogTo $1 $2"
+    CemossheLog "LogTo $1 $2"
     LOGFILENAME="$1"
     [ -z "$LOGFILENAME" ] && return
     LOGFREQ="$2"

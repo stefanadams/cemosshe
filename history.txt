@@ -50,6 +50,12 @@ please check there for updates prior to submitting patches!
 
 ------------------------------------------------------------------------
 
+v11.10.21
+    Stefan Adams <stefan@cogentinnovators.com>
+        - Re-organized for better upgradability -- rules now defined in
+          /etc/cemosshe/cemosshe.conf (Issue #8)
+        - Added cron to daily update package (Issue #8)
+
 v11.10.13
     Stefan Adams <stefan@cogentinnovators.com>
         - Updated version

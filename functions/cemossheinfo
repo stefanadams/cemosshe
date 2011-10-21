@@ -1,0 +1,22 @@
+function CemossheInfo () {
+    HostNotesShow
+    IsVirtualShow
+    SysInfoShow  
+    DateShow     
+    UptimeShow   
+    UnameShow    
+    WShow
+    DfShow
+    FreeShow
+    IfconfigShow
+    PublicIPShow
+    SSHShow
+    PstreeShow
+    RouteShow 
+    LastLoginShow
+    NetstatShow  
+    FileShow /etc/issue /etc/hosts /etc/resolv.conf
+    PackagesShow
+    LspciShow   
+    LshwShow    
+}
