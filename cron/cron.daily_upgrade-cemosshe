@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Install with:
+#   ln -s /usr/local/lib/cemosshe/cron.daily_upgrade-cemosshe /etc/cron.d/upgrade-cemosshe (No periods allowed in cron files)
+#   chmod 0755 /usr/local/lib/cemosshe/cron.daily_upgrade-cemosshe
+#   chown root.root /usr/local/lib/cemosshe/cron.daily_upgrade-cemosshe
+
+wget -O /tmp/cemosshe.tar.gz http://www.cogent-it.com/download/cemosshe.tar.gz
+[ -e /tmp/cemosshe.tar.gz ] && tar xf /tmp/cemosshe.tar.gz -C /usr/local/lib
