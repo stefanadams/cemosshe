@@ -1,4 +1,5 @@
 #!/bin/sh
+# v11.10.21
 
 # set -x 
 
@@ -8,26 +9,20 @@
 #=========================================================
 #=========================================================
 
-SYSTEMNAME=`/bin/hostname -f`
-SYSTEMGROUP=`cat /etc/groupname`
-
-CEMOSSHEDIR=`dirname $(readlink -f $0)`
-DATADIR=$CEMOSSHEDIR/Data
-TEMPDIR=/tmp
-
-NETWAIT=5       # seconds timeout for network service check
-
+# Defaults are set in function.cemosshe
+#SYSTEMNAME=
+#SYSTEMGROUP=
+#CEMOSSHEDIR=
+#DATADIR=
+#TEMPDIR=
+#NETWAIT=       # seconds timeout for network service check
 
 #=========================================================
 # Startup
 #=========================================================
-. $CEMOSSHEDIR/functions.mosshe
+. `dirname $0`/functions.cemosshe
 
-MossheSelfCheck $0
-MossheUninstall
-
-# Always make this the last step
-rm -f $TEMPDIR/tmp.$$.collected.tmp $TEMPDIR/cemosshe_lock.*
+CemossheUninstall
 
 #############################################################################
 # CeMoSSHe: CEntral MOnitoring in a Simple SHell Environment

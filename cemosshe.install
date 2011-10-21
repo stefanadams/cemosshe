@@ -15,14 +15,14 @@
 #CEMOSSHEDIR=
 #DATADIR=
 #TEMPDIR=
-#NETWAIT=	# seconds timeout for network service check
+#NETWAIT=       # seconds timeout for network service check
 
 #=========================================================
 # Startup
 #=========================================================
 . `dirname $0`/functions.cemosshe
 
-CemossheRun "$1"	# Supply an alternative configuration file on the command line
+CemossheInstall
 
 #############################################################################
 # CeMoSSHe: CEntral MOnitoring in a Simple SHell Environment
@@ -38,7 +38,7 @@ CemossheRun "$1"	# Supply an alternative configuration file on the command line
 # For bug reports and suggestions or if you just want to talk to me please
 # contact me at stefan@cogentinnovators.com
 #
-# Updates will be available at  http://www.cogent-it.com/software/cemosshe/
+# Updates will be available at  http://www.cogent-it.com/software/mosshe/
 # please check there for updates prior to submitting patches!
 #
 # For list of changes please refer to the HISTORY file. Thanks.
