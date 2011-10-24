@@ -78,7 +78,7 @@ function SnapshotsCheck () {
         else
             STATUS="OK"
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME_${i##*/};$STATUS;$LASTOK;<div class='collapsable'>Snapshot last run $LASTRUN days ago and last succeeded $LASTOK days ago<pre>About this server:<br />$([ -e $STORE/.about ] && cat $STORE/.about)<br />Successful archives:<br \/>$(find $STORE -maxdepth 1 -type d \( -name "*-ok-*" -o -name "*-partial-*" \) | sort | sed -e 's/$/<br \/>/' | paste -s)<br \/><br \/>Latest Log:<br \/>$(tail -13 $STORE/latest.log | sed -e 's/$/<br \/>/' | paste -s)<br \/></pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME_${i##*/};$STATUS;$LASTOK;<div class='collapsable'>Snapshot last run $LASTRUN days ago and last succeeded $LASTOK days ago<pre>About this server:<br />$([ -e $STORE/.about ] && cat $STORE/.about)<br />Successful archives:<br \/>$(find $STORE -maxdepth 1 -type d \( -name "*-ok-*" -o -name "*-partial-*" \) | sort | sed -e 's/$/<br \/>/' | paste -s)<br \/><br \/>Latest Log:<br \/>$(egrep -e 'Number of files:|Total file size:' $STORE/latest.log | sed -e 's/$/<br \/>/' | paste -s)<br \/></pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
     done
 }
 
