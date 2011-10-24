@@ -50,6 +50,11 @@ please check there for updates prior to submitting patches!
 
 ------------------------------------------------------------------------
 
+v11.10.24
+    Stefan Adams <stefan@cogentinnovators.com>
+        - SnapshotsCheck changed output to show only the important Files and
+          Size
+
 v11.10.21
     Stefan Adams <stefan@cogentinnovators.com>
         - Re-organized for better upgradability -- rules now defined in
