@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Install with:
 #   ln -s /usr/local/lib/cemosshe/cron.daily_upgrade-cemosshe /etc/cron.d/upgrade-cemosshe (No periods allowed in cron files)

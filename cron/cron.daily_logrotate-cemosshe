@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Install with:
 #   ln -s /usr/local/lib/cemosshe/cron.daily_logrotate-cemosshe /etc/cron.d/logrotate-cemosshe (No periods allowed in cron files)
