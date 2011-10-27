@@ -50,6 +50,10 @@ please check there for updates prior to submitting patches!
 
 ------------------------------------------------------------------------
 
+v11.10.26
+    Stefan Adams <stefan@cogentinnovators.com>
+        - Just some minor cleanups
+
 v11.10.24
     Stefan Adams <stefan@cogentinnovators.com>
         - SnapshotsCheck changed output to show only the important Files and

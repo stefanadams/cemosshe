@@ -21,7 +21,7 @@
 
 # This cgi is still a work in progress, but it's a start
 
-our $VERSION = '11.10.24';
+our $VERSION = '11.10.26';
 
 use strict;
 use warnings;

@@ -1,5 +1,5 @@
 #!/bin/sh
-# v11.10.24
+# v11.10.26
 
 # set -x 
 
@@ -38,7 +38,7 @@ CemossheUninstall
 # For bug reports and suggestions or if you just want to talk to me please
 # contact me at stefan@cogentinnovators.com
 #
-# Updates will be available at  http://www.cogent-it.com/software/mosshe/
+# Updates will be available at  http://www.cogent-it.com/software/cemosshe/
 # please check there for updates prior to submitting patches!
 #
 # For list of changes please refer to the HISTORY file. Thanks.
