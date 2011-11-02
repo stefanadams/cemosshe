@@ -38,8 +38,9 @@ TIME=`date +%H:%M:%S`
 
 [ -z "$SYSTEMGROUP" ] && [ -e /etc/groupname ] && SYSTEMGROUP=`cat /etc/groupname`
 [ -z "$SYSTEMNAME" ] && SYSTEMNAME=`/bin/hostname -f`
-[ -z "$SYSTEMGROUP" ] && SYSTEMNAME=`echo $RANDOM$RANDOM | md5sum | cut -d\  -f1`
-[ -z "$SYSTEMNAME" ] && SYSTEMNAME=`echo $RANDOM$RANDOM | md5sum | cut -d\  -f1`
+[ -z "$SYSTEMNAME" ] && [ -e /etc/systemname ] && SYSTEMNAME=`cat /etc/systemname`
+[ -z "$SYSTEMGROUP" ] && SYSTEMNAME=`echo $RANDOM$RANDOM | md5sum | cut -d\  -f1` && echo $SYSTEMGROUP > /etc/groupname
+[ -z "$SYSTEMNAME" ] && SYSTEMNAME=`echo $RANDOM$RANDOM | md5sum | cut -d\  -f1` && echo $SYSTEMGROUP > /etc/systemname
 
 [ -z "$CEMOSSHEDIR" ] && CEMOSSHEDIR=`dirname $0`
 [ -z "$DATADIR" ] && DATADIR=$CEMOSSHEDIR/Data
