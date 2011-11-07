@@ -111,55 +111,8 @@ if ( !$user || param('logout') ) {
 	}
 } else {
 	print a({-href=>'/?logout=1'}, $user),br;
-	if ( param('list') eq 'full' ) {
-		print &htmlhead;
-		my @details = &details;
-		my @last = (('')x12);
-		foreach ( @details ) {
-			my @detail = split m!;!;
-			my %color = ();
-			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
-				$color{timestamp}='red';
-			} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 1*60*60 ) {
-				$color{timestamp}='yellow';
-			} else {
-				$color{timestamp}='green';
-			}
-			if ( $detail[6] eq 'ALERT' ) {
-				$color{status}='red';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'WARN' ) {
-				$color{status}='yellow';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'OK' ) {
-				$color{status}='green';
-				$COUNT{OK}++;
-			} elsif ( $detail[6] eq 'INFO' ) {
-				$color{status}='white';
-			} else {
-				$color{status}='blue';
-				$COUNT{NOTOK}++;
-			}
-			$detail[7] =~ s/(\.\d)0%$/$1%/;
-			$detail[7] =~ s/\.0%$/%/;
-			do { $detail[0]=''; $detail[1]=''; } if $detail[3] eq $last[3];
-			$detail[2]='' if $detail[2] eq $last[2];
-			$detail[3]='' if $detail[3] eq $last[3] && !$detail[2];
-			$detail[4]='' if $detail[4] eq $last[4] && !$detail[3];
-			$detail[5]='' if $detail[5] eq $last[5] && !$detail[4];
-			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]) if $detail[0] && $detail[1] && $detail[2] && $detail[3] && $detail[4] && $detail[5];
-			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>$detail[0]||$detail[1]?$color{timestamp}:'white', class=>$detail[0]||$detail[1]?'border':''}, ["$detail[0] $detail[1]"]).
-				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?list=full&group=$detail[2]"}, $detail[2])]).
-				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?list=full&group=$detail[2]&system=$detail[3]"}, $detail[3])]).
-				td({-bgcolor=>'white', class=>$detail[4]?'border':''}, [$detail[4]]).
-				td({-bgcolor=>$color{status}, class=>'border'}, [@detail[5..10]])
-			]);
-			@last = split m!;!;
-		}
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
-		print &htmlfoot;
-	} elsif ( !param('list') || param('list') eq 'groups' ) {
+	@_ = param;
+	if ( $#_ == -1 || param('list') eq 'groups' ) {
 		print &htmlhead;
 		my @details = &details;
 		my @last = (('')x12);
@@ -198,9 +151,9 @@ if ( !$user || param('logout') ) {
 			$details{$detail[2]}{$detail[6]}++;
 			@last = split m!;!;
 		}
-		foreach ( keys %details ) {
+		foreach ( sort keys %details ) {
 			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?list=full&group=$_"}, $_)]).
+				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?group=$_"}, $_)]).
 				td({-bgcolor=>'white', class=>'border'}, [$details{$_}{SYSTEMS}]).
 				td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
 				td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
@@ -210,19 +163,29 @@ if ( !$user || param('logout') ) {
 		}
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Systems', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
 		print &htmlfoot;
-	} elsif ( param('list') eq 'properties' ) {
+	} else {
 		print &htmlhead;
 		my @details = &details;
 		my @last = (('')x12);
 		foreach ( @details ) {
 			my @detail = split m!;!;
+			if ( my @status = param('status') ) {
+				next unless grep { $_ eq $detail[6] } @status;
+			}
 			my %color = ();
+			my $timestamp;
 			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
+				$timestamp = 'ALERT';
 				$color{timestamp}='red';
 			} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 1*60*60 ) {
+				$timestamp = 'WARN';
 				$color{timestamp}='yellow';
 			} else {
+				$timestamp = 'OK';
 				$color{timestamp}='green';
+			}
+			if ( my @timestamp = param('timestamp') ) {
+				next unless grep { $_ eq $timestamp } @timestamp;
 			}
 			if ( $detail[6] eq 'ALERT' ) {
 				$color{status}='red';
@@ -249,58 +212,10 @@ if ( !$user || param('logout') ) {
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]) if $detail[0] && $detail[1] && $detail[2] && $detail[3] && $detail[4] && $detail[5];
 			print Tr({-class=>'datarow'}, [
 				td({-bgcolor=>$detail[0]||$detail[1]?$color{timestamp}:'white', class=>$detail[0]||$detail[1]?'border':''}, ["$detail[0] $detail[1]"]).
-				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?list=full&group=$detail[2]"}, $detail[2])]).
-				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?list=full&group=$detail[2]&system=$detail[3]"}, $detail[3])]).
+				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?group=$detail[2]"}, $detail[2])]).
+				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?group=$detail[2]&system=$detail[3]"}, $detail[3])]).
 				td({-bgcolor=>'white', class=>$detail[4]?'border':''}, [$detail[4]]).
-				td({-bgcolor=>$color{status}, class=>'border'}, [@detail[5..10]])
-			]);
-			@last = split m!;!;
-		}
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
-		print &htmlfoot;
-	} elsif ( param('list') eq 'notok' ) {
-		print &htmlhead;
-		my @details = &details;
-		my @last = (('')x12);
-		foreach ( @details ) {
-			my @detail = split m!;!;
-			my %color = ();
-			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
-				$color{timestamp}='red';
-			} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 1*60*60 ) {
-				$color{timestamp}='yellow';
-			} else {
-				$color{timestamp}='green';
-			}
-			if ( $detail[6] eq 'ALERT' ) {
-				$color{status}='red';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'WARN' ) {
-				$color{status}='yellow';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'OK' ) {
-				$color{status}='green';
-				$COUNT{OK}++;
-			} elsif ( $detail[6] eq 'INFO' ) {
-				$color{status}='white';
-			} else {
-				$color{status}='blue';
-				$COUNT{NOTOK}++;
-			}
-			$detail[7] =~ s/(\.\d)0%$/$1%/;
-			$detail[7] =~ s/\.0%$/%/;
-			do { $detail[0]=''; $detail[1]=''; } if $detail[3] eq $last[3];
-			$detail[2]='' if $detail[2] eq $last[2];
-			$detail[3]='' if $detail[3] eq $last[3] && !$detail[2];
-			$detail[4]='' if $detail[4] eq $last[4] && !$detail[3];
-			$detail[5]='' if $detail[5] eq $last[5] && !$detail[4];
-			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]) if $detail[0] && $detail[1] && $detail[2] && $detail[3] && $detail[4] && $detail[5];
-			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>$detail[0]||$detail[1]?$color{timestamp}:'white', class=>$detail[0]||$detail[1]?'border':''}, ["$detail[0] $detail[1]"]).
-				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?list=full&group=$detail[2]"}, $detail[2])]).
-				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?list=full&group=$detail[2]&system=$detail[3]"}, $detail[3])]).
-				td({-bgcolor=>'white', class=>$detail[4]?'border':''}, [$detail[4]]).
-				td({-bgcolor=>$color{status}, class=>'border'}, [@detail[5..10]])
+				td({-bgcolor=>$color{status}, class=>"border$color{timestamp}"}, [@detail[5..10]])
 			]);
 			@last = split m!;!;
 		}
@@ -334,7 +249,7 @@ while ( my $systemgroup = readdir(ROOT) ) {
 	closedir SYSTEMGROUP;
 }
 closedir ROOT;
-return fieldsort ';', [-3], @details;
+return fieldsort ';', [3,4], @details;
 }
 
 sub htmlhead {
@@ -397,6 +312,9 @@ window.onload=init;
 .collapsable { border: 0px solid black; }
 table { padding: 2px; border-collapse: collapse; }
 .border { border: 1px solid black; }
+.bordergreen { border: 1px solid black; }
+.borderyellow { border: 3px solid gold; }
+.borderred { border: 3px solid firebrick; }
 -->
 </style> 
 </head>
