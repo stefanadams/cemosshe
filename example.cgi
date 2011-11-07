@@ -111,9 +111,9 @@ if ( !$user || param('logout') ) {
 	}
 } else {
 	print a({-href=>'/?logout=1'}, $user),br;
-	@_ = param;
+	@_ = grep { !/(details|sla|logout|user|pass)$/ } param;
 	if ( $#_ == -1 || param('list') eq 'groups' ) {
-		print htmlhead();
+		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
 		my @details = &details;
 		my @last = (('')x12);
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Systems', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
@@ -164,7 +164,7 @@ if ( !$user || param('logout') ) {
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Systems', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
 		print &htmlfoot;
 	} else {
-		print &htmlhead;
+		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
 		my @details = &details;
 		my @last = (('')x12);
 		foreach ( @details ) {
