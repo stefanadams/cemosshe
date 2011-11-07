@@ -113,7 +113,7 @@ if ( !$user || param('logout') ) {
 	print a({-href=>'/?logout=1'}, $user),br;
 	@_ = param;
 	if ( $#_ == -1 || param('list') eq 'groups' ) {
-		print &htmlhead;
+		print htmlhead();
 		my @details = &details;
 		my @last = (('')x12);
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Systems', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
@@ -153,7 +153,7 @@ if ( !$user || param('logout') ) {
 		}
 		foreach ( sort keys %details ) {
 			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?group=$_"}, $_)]).
+				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?status=!INFO&status=!OK&group=$_"}, $_)]).
 				td({-bgcolor=>'white', class=>'border'}, [$details{$_}{SYSTEMS}]).
 				td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
 				td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
@@ -169,7 +169,9 @@ if ( !$user || param('logout') ) {
 		my @last = (('')x12);
 		foreach ( @details ) {
 			my @detail = split m!;!;
-			if ( my @status = param('status') ) {
+			if ( my @status = grep { /^!/ } param('status') ) {
+				next if grep { $_ eq "!$detail[6]" } @status;
+			} elsif ( my @status = grep { /^[^!]/ } param('status') ) {
 				next unless grep { $_ eq $detail[6] } @status;
 			}
 			my %color = ();
@@ -322,15 +324,7 @@ table { padding: 2px; border-collapse: collapse; }
 <body>
 <center>
 <h1>CeMoSSHe System Status</h1>
-<a href="/?list=full">Full Status of All</a> 
-&nbsp; / &nbsp;
-<a href="/?list=groups">Group List</a>
-<!--
-&nbsp; / &nbsp;
-<a href="/?list=properties">Properties List</a> 
-&nbsp; / &nbsp;
-<a href="/?list=notok">Reduced Status - Not OK</a>
--->
+$_[0]
 <p>
 $TIMESTAMP
 <br>
