@@ -116,7 +116,7 @@ if ( !$user || param('logout') ) {
 		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
 		my @details = &details;
 		my @last = (('')x12);
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
+		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'Status']) ]);
 		my %details = ();
 		foreach ( @details ) {
 			my @detail = split m!;!;
@@ -156,7 +156,7 @@ if ( !$user || param('logout') ) {
 			$details{$detail[2]}{TSALERT} = 0 unless $details{$detail[2]}{TSALERT};
 			$details{$detail[2]}{TSWARN} = 0 unless $details{$detail[2]}{TSWARN};
 			$details{$detail[2]}{TSOK} = 0 unless $details{$detail[2]}{TSOK};
-			if ( $detail[3] ne $last[3] ) {
+			if ( $detail[3] ne $last[3] && $detail[3] ne 'TODO' ) {
 				$details{$detail[2]}{SYSTEMS}++;
 				$details{$detail[2]}{TSALERT}++ if $timestamp eq 'ALERT';
 				$details{$detail[2]}{TSWARN}++ if $timestamp eq 'WARN';
@@ -171,13 +171,14 @@ if ( !$user || param('logout') ) {
 				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?status=!INFO&status=!OK&group=$_"}, $_)]).
 				td({-bgcolor=>'white', class=>'border'}, [$details{$_}{SYSTEMS}]).
 				td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($details{$_}{TSOK}, $details{$_}{TSWARN}, $details{$_}{TSALERT}, $details{$_}{SYSTEMS})]).
-				td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
-				td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
-				td({-bgcolor=>'red', class=>'border'}, [$details{$_}{ALERT}]).
-				td({-bgcolor=>'blue', class=>'border'}, [$details{$_}{UNDEF}])
+				td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($details{$_}{OK}, $details{$_}{WARN}, $details{$_}{ALERT})])
+				#td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
+				#td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
+				#td({-bgcolor=>'red', class=>'border'}, [$details{$_}{ALERT}]).
+				#td({-bgcolor=>'blue', class=>'border'}, [$details{$_}{UNDEF}])
 			]), "\n";
 		}
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
+		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'Status']) ]);
 		print &htmlfoot;
 	} else {
 		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
@@ -249,14 +250,15 @@ $session->flush;
 
 sub bar {
 	my ($green, $yellow, $red, $number) = @_;
+	$number = $green + $yellow + $red unless $number;
 	return undef unless $number;
 	$green = $green/$number*100;
 	$yellow = $green+($yellow/$number*100);
 	$red = $yellow+($red/$number*100);
-	$green = "display: inline; background-color: green; position: absolute; width: $green%; height: 5px;  z-index: 3; vertical-align: top; ";
-	$yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; height: 5px;  z-index: 2; vertical-align: top; ";
-	$red = "display: inline; background-color: red; position: absolute; width: $red%; height: 5px;  z-index: 1; vertical-align: top; ";
-	$number = "display: inline; position: absolute; width: 100%; height: 5px;  z-index: 4; text-align: center; vertical-align: top; ";
+	$green = "display: inline; background-color: green; position: absolute; width: $green%; height: 10px;  z-index: 3; vertical-align: top; ";
+	$yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; height: 10px;  z-index: 2; vertical-align: top; ";
+	$red = "display: inline; background-color: red; position: absolute; width: $red%; height: 10px;  z-index: 1; vertical-align: top; ";
+	$number = "display: inline; position: absolute; width: 100%; height: 10px;  z-index: 4; text-align: center; vertical-align: top; ";
 	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$green}, '&nbsp;').div({-style=>$yellow}, '&nbsp;').div({-style=>$red}, '&nbsp;'));
 }
 
