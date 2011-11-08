@@ -26,6 +26,11 @@ function IfconfigShow () {
     echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;ifconfig;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT NICs <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
 }
 
+function CemossheVerShow () {
+    CemossheLog "$FUNCNAME $1"
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;CeMoSSHe Version;INFO;$CEMOSSHEVERSION;$CEMOSSHEVERSION" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
 function DfShow () {
     CemossheLog "$FUNCNAME $1"
     OUT=`df -hP | grep ^/dev/| sed -e 's/$/<br \/>/' | paste -s`

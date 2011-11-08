@@ -1,4 +1,5 @@
 function CemossheInfo () {
+    CemossheVerShow
     HostNotesShow
     IsVirtualShow
     SysInfoShow  

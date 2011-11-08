@@ -112,7 +112,7 @@ if ( !$user || param('logout') ) {
 } else {
 	print a({-href=>'/?logout=1'}, $user),br;
 	@_ = grep { !/(details|sla|logout|user|pass)$/ } param;
-	if ( $#_ == -1 || param('list') eq 'groups' ) {
+	if ( $#_ == -1 || (param('list') && param('list') eq 'groups') ) {
 		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
 		my @details = &details;
 		my @last = (('')x12);
@@ -365,7 +365,10 @@ table { padding: 2px; border-collapse: collapse; }
 .bordergreen { border: 1px solid black; }
 .borderyellow { border: 3px solid gold; }
 .borderred { border: 3px solid firebrick; }
+<<<<<<< HEAD:example.cgi
+=======
 .nospacing { border-collapse: collapse; padding: 0px; border-spacing: 0px; margin: 0px; }
+>>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 -->
 </style> 
 </head>
