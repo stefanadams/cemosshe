@@ -169,9 +169,11 @@ if ( !$user || param('logout') ) {
 		my @last = (('')x12);
 		foreach ( @details ) {
 			my @detail = split m!;!;
-			if ( my @status = grep { /^!/ } param('status') ) {
+			my @lmi = lmi($detail[2], $detail[3]);
+			my @status = ();
+			if ( @status = grep { /^!/ } param('status') ) {
 				next if grep { $_ eq "!$detail[6]" } @status;
-			} elsif ( my @status = grep { /^[^!]/ } param('status') ) {
+			} elsif ( @status = grep { /^[^!]/ } param('status') ) {
 				next unless grep { $_ eq $detail[6] } @status;
 			}
 			my %color = ();
@@ -214,8 +216,8 @@ if ( !$user || param('logout') ) {
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]) if $detail[0] && $detail[1] && $detail[2] && $detail[3] && $detail[4] && $detail[5];
 			print Tr({-class=>'datarow'}, [
 				td({-bgcolor=>$detail[0]||$detail[1]?$color{timestamp}:'white', class=>$detail[0]||$detail[1]?'border':''}, ["$detail[0] $detail[1]"]).
-				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?group=$detail[2]"}, $detail[2])]).
-				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?group=$detail[2]&system=$detail[3]"}, $detail[3])]).
+				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?group=$detail[2]"}, $detail[2]).($detail[2] && $lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
+				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?group=$detail[2]&system=$detail[3]"}, $detail[3]).($detail[3] && $lmi[1] ? ' '.a({href=>$lmi[1]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
 				td({-bgcolor=>'white', class=>$detail[4]?'border':''}, [$detail[4]]).
 				td({-bgcolor=>$color{status}, class=>"border$color{timestamp}"}, [@detail[5..10]])
 			]);
@@ -228,6 +230,21 @@ if ( !$user || param('logout') ) {
 $session->flush;
 
 # --------------------------------------------------
+
+sub lmi {
+	my ($group, $system) = @_;
+	my @lmi = ('', '');
+	open LMI, "/home/cemosshe/csv/$group/.lmi" and do {
+		$lmi[0] = <LMI>;
+		close LMI;
+	};
+	open LMI, "/home/cemosshe/csv/$group/$system/.lmi" and do {
+		$lmi[1] = <LMI>;
+		close LMI;
+	};
+	return @lmi;
+}
+
 sub details {
 my @details = ();
 opendir ROOT, $root or die $!;
