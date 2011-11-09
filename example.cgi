@@ -258,11 +258,11 @@ sub bar {
 	$green = $green/$number*100;
 	$yellow = $green+($yellow/$number*100);
 	$red = $yellow+($red/$number*100);
-	$green = "display: inline; background-color: green; position: absolute; width: $green%; height: 10px;  z-index: 3; vertical-align: top; ";
-	$yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; height: 10px;  z-index: 2; vertical-align: top; ";
-	$red = "display: inline; background-color: red; position: absolute; width: $red%; height: 10px;  z-index: 1; vertical-align: top; ";
-	$number = "display: inline; position: absolute; width: 100%; height: 10px;  z-index: 4; text-align: center; vertical-align: top; ";
-	return div({-style=>"position: relative; vertical-align: top; ", -alt=>"$_[0] / $_[1] / $_[2]"}, div({-style=>$green}, '&nbsp;').div({-style=>$yellow}, '&nbsp;').div({-style=>$red}, '&nbsp;'));
+	$green = "display: inline; background-color: green; position: absolute; width: $green%; z-index: 3; ";
+	$yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; z-index: 2; ";
+	$red = "display: inline; background-color: red; position: absolute; width: $red%; z-index: 1; ";
+	$number = "display: inline; position: absolute; width: 100%; height: 10px; text-align: center; ";
+	return div({-style=>"position: relative; vertical-align: top; ", -alt=>"$_[0] / $_[1] / $_[2]"}, div({-style=>$green}, '&nbsp;').div({-style=>$yellow}, '&nbsp;').div({-style=>$red}, '&nbsp;')).br;
 }
 
 sub lmi {
