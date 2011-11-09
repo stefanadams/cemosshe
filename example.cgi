@@ -111,21 +111,12 @@ if ( !$user || param('logout') ) {
 	}
 } else {
 	print a({-href=>'/?logout=1'}, $user),br;
-<<<<<<< HEAD:example.cgi
-	if ( param('list') eq 'groups' ) {
-		print &htmlhead;
-=======
 	@_ = grep { !/(details|sla|logout|user|pass)$/ } param;
-	if ( $#_ == -1 || param('list') eq 'groups' ) {
+	if ( $#_ == -1 || (param('list') && param('list') eq 'groups') ) {
 		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
->>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 		my @details = &details;
 		my @last = (('')x12);
-<<<<<<< HEAD:example.cgi
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Systems', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
-=======
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'Status']) ]);
->>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 		my %details = ();
 		foreach ( @details ) {
 			my @detail = split m!;!;
@@ -190,24 +181,16 @@ if ( !$user || param('logout') ) {
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'Status']) ]);
 		print &htmlfoot;
 	} else {
-<<<<<<< HEAD:example.cgi
-		print &htmlhead;
-=======
 		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
->>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 		my @details = &details;
 		my @last = (('')x12);
 		foreach ( @details ) {
 			my @detail = split m!;!;
-<<<<<<< HEAD:example.cgi
-			if ( my @status = param('status') ) {
-=======
 			my @lmi = lmi($detail[2], $detail[3]);
 			my @status = ();
 			if ( @status = grep { /^!/ } param('status') ) {
 				next if grep { $_ eq "!$detail[6]" } @status;
 			} elsif ( @status = grep { /^[^!]/ } param('status') ) {
->>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 				next unless grep { $_ eq $detail[6] } @status;
 			}
 			my %color = ();
