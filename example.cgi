@@ -116,7 +116,7 @@ if ( !$user || param('logout') ) {
 		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
 		my @details = &details;
 		my @last = (('')x12);
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'Status']) ]);
+		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
 		my %details = ();
 		foreach ( @details ) {
 			my @detail = split m!;!;
@@ -172,7 +172,6 @@ next if $detail[3] eq 'TODO';
 			my @lmi = @{$details{$_}{LMI}};
 			print Tr({-class=>'datarow'}, [
 				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?status=!INFO&status=!OK&group=$_"}, $_).($lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
-				td({-bgcolor=>'white', class=>'border'}, [$details{$_}{SYSTEMS}]).
 				td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($details{$_}{TSOK}, $details{$_}{TSWARN}, $details{$_}{TSALERT}, $details{$_}{SYSTEMS})]).
 				td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($details{$_}{OK}, $details{$_}{WARN}, $details{$_}{ALERT})])
 				#td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
@@ -181,7 +180,7 @@ next if $detail[3] eq 'TODO';
 				#td({-bgcolor=>'blue', class=>'border'}, [$details{$_}{UNDEF}])
 			]), "\n";
 		}
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'Status']) ]);
+		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
 		print &htmlfoot;
 	} else {
 		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
@@ -252,17 +251,18 @@ $session->flush;
 # --------------------------------------------------
 
 sub bar {
+	@_ = map { $_ || 0 } @_;
 	my ($green, $yellow, $red, $number) = @_;
 	$number = $green + $yellow + $red unless $number;
 	return undef unless $number;
 	$green = $green/$number*100;
 	$yellow = $green+($yellow/$number*100);
 	$red = $yellow+($red/$number*100);
-	$green = "display: inline; background-color: green; position: absolute; width: $green%; z-index: 3; ";
-	$yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; z-index: 2; ";
-	$red = "display: inline; background-color: red; position: absolute; width: $red%; z-index: 1; ";
-	$number = "display: inline; position: absolute; width: 100%; height: 10px; text-align: center; ";
-	return div({-style=>"position: relative; vertical-align: top; ", -alt=>"$_[0] / $_[1] / $_[2]"}, div({-style=>$green}, '&nbsp;').div({-style=>$yellow}, '&nbsp;').div({-style=>$red}, '&nbsp;')).br;
+	my $Green = "display: inline; background-color: green; position: absolute; width: $green%; z-index: 3;";
+	my $Yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; z-index: 2;";
+	my $Red = "display: inline; background-color: red; position: absolute; width: $red%; z-index: 1;";
+	my $Number = "display: inline; position: absolute; width: 100%; text-align: center; z-index: 4; font-size: 10px; vertical-align: center;";
+	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$Number}, "$_[0]+$_[1]+$_[2]=$number").div({-style=>$Green}, '&nbsp;').div({-style=>$Yellow}, '&nbsp;').div({-style=>$Red}, '&nbsp;')).br;
 }
 
 sub lmi {
