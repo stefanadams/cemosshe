@@ -1,3 +1,6 @@
+#!/bin/sh
+# v11.11.08
+
 ifconfig () {
 
    if [ `which perl` -a $# -le 1 ]; then

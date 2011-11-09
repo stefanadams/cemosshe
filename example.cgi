@@ -110,10 +110,15 @@ if ( !$user || param('logout') ) {
 		print "$root/".param('systemgroup').'/'.param('systemname')."/sla.csv\n";
 	}
 } else {
+	param('list', 'groups') if $user && (param('user') || param('pass') || param('logout'));
+	my $list = param('list') || '';
+	my $group = param('group') || '';
+	my $system = param('system') || '';
+	my $timestamp = param('timestamp') || '';
+	my $status = param('status') || '';
 	print a({-href=>'/?logout=1'}, $user),br;
-	@_ = grep { !/(details|sla|logout|user|pass)$/ } param;
-	if ( $#_ == -1 || (param('list') && param('list') eq 'groups') ) {
-		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
+	if ( $list eq 'groups' ) {
+		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "All Not OK").' / '.a({-href=>"/"}, "Group List"));
 		my @details = &details;
 		my @last = (('')x12);
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
@@ -122,7 +127,6 @@ if ( !$user || param('logout') ) {
 			my @detail = split m!;!;
 			my %color = ();
 			my $timestamp;
-next if $detail[3] eq 'TODO';
 			@{$details{$detail[2]}{LMI}} = lmi($detail[2], $detail[3]);
 			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
 				$timestamp = 'ALERT';
@@ -171,7 +175,7 @@ next if $detail[3] eq 'TODO';
 		foreach ( sort keys %details ) {
 			my @lmi = @{$details{$_}{LMI}};
 			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?status=!INFO&status=!OK&group=$_"}, $_).($lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
+				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?list=systems&group=$_"}, $_).($lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
 				td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($details{$_}{TSOK}, $details{$_}{TSWARN}, $details{$_}{TSALERT}, $details{$_}{SYSTEMS})]).
 				td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($details{$_}{OK}, $details{$_}{WARN}, $details{$_}{ALERT})])
 				#td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
@@ -182,8 +186,81 @@ next if $detail[3] eq 'TODO';
 		}
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
 		print &htmlfoot;
+	} elsif ( $list eq 'systems' ) {
+		print htmlhead(a({-href=>"/?status=!INFO&status=!OK&group=$group"}, "All Not OK").' / '.a({-href=>"/?list=groups"}, "Group List"));
+		my @details = &details;
+		my @last = (('')x12);
+		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
+		my %details = ();
+		foreach ( @details ) {
+			my @detail = split m!;!;
+			my %color = ();
+			my $timestamp;
+next if $detail[3] eq 'TODO';
+			@{$details{"$detail[2];$detail[3]"}{LMI}} = lmi($detail[2], $detail[3]);
+			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
+				$timestamp = 'ALERT';
+				$color{timestamp}='red';
+			} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 1*60*60 ) {
+				$timestamp = 'WARN';
+				$color{timestamp}='yellow';
+			} else {
+				$timestamp = 'OK';
+				$color{timestamp}='green';
+			}
+			if ( my @timestamp = param('timestamp') ) {
+				next unless grep { $_ eq $timestamp } @timestamp;
+			}
+			if ( $detail[6] eq 'ALERT' ) {
+				$color{status}='red';
+				$COUNT{NOTOK}++;
+			} elsif ( $detail[6] eq 'WARN' ) {
+				$color{status}='yellow';
+				$COUNT{NOTOK}++;
+			} elsif ( $detail[6] eq 'OK' ) {
+				$color{status}='green';
+				$COUNT{OK}++;
+			} elsif ( $detail[6] eq 'INFO' ) {
+				$color{status}='white';
+			} else {
+				$color{status}='blue';
+				$COUNT{NOTOK}++;
+			}
+			$detail[7] =~ s/(\.\d)0%$/$1%/;
+			$detail[7] =~ s/\.0%$/%/;
+			$details{"$detail[2];$detail[3]"}{TSALERT} = 0 unless $details{"$detail[2];$detail[3]"}{TSALERT};
+			$details{"$detail[2];$detail[3]"}{TSWARN} = 0 unless $details{"$detail[2];$detail[3]"}{TSWARN};
+			$details{"$detail[2];$detail[3]"}{TSOK} = 0 unless $details{"$detail[2];$detail[3]"}{TSOK};
+			if ( $detail[3] ne $last[3] && $detail[3] ne 'TODO' ) {
+				$details{"$detail[2];$detail[3]"}{TSALERT}++ if $timestamp eq 'ALERT';
+				$details{"$detail[2];$detail[3]"}{TSWARN}++ if $timestamp eq 'WARN';
+				$details{"$detail[2];$detail[3]"}{TSOK}++ if $timestamp eq 'OK';
+			}
+			$details{"$detail[2];$detail[3]"}{$detail[6]} = 0 unless $details{"$detail[2];$detail[3]"}{$detail[6]};
+			$details{"$detail[2];$detail[3]"}{$detail[6]}++;
+			@last = split m!;!;
+		}
+		my $last = '';
+		foreach ( sort keys %details ) {
+			my ($g, $s) = split m!;!;
+			my @lmi = @{$details{$_}{LMI}};
+			$g='' if $g eq $last;
+			print Tr({-class=>'datarow'}, [
+				td({-bgcolor=>'white', class=>$g?'border':''}, [$g]).
+				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?group=$group&system=$s&status=!INFO&status=!OK"}, $s).($lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
+				td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($details{$_}{TSOK}, $details{$_}{TSWARN}, $details{$_}{TSALERT})]).
+				td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($details{$_}{OK}, $details{$_}{WARN}, $details{$_}{ALERT})])
+				#td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
+				#td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
+				#td({-bgcolor=>'red', class=>'border'}, [$details{$_}{ALERT}]).
+				#td({-bgcolor=>'blue', class=>'border'}, [$details{$_}{UNDEF}])
+			]), "\n";
+			$last = $g if $g;
+		}
+		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
+		print &htmlfoot;
 	} else {
-		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
+		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "All Not OK").' / '.a({-href=>"/?list=groups"}, "Group List").' / '.a({-href=>"/?list=systems&group=$group"}, "System List").br.a({-href=>"/?group=$group&system=$system&status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/?group=$group&system=$system&status=INFO"}, "Info").' / '.a({-href=>"/?group=$group&system=$system"}, "All"));
 		my @details = &details;
 		my @last = (('')x12);
 		foreach ( @details ) {
@@ -242,8 +319,13 @@ next if $detail[3] eq 'TODO';
 			]);
 			@last = split m!;!;
 		}
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
+		if ( $last[0] ) {
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
+		} else {
+			print br,"Nothing to report for ".join(' / ', a({-href=>"?list=systems&group=$group"}, $group), $system).'.';
+		}
 		print &htmlfoot;
+
 	}
 }
 $session->flush;
@@ -388,9 +470,7 @@ HEAD
 }
 
 sub htmlfoot {
-return <<FOOT;
-</table>
-Totals: <div class="ok">$COUNT{OK} checks are OK</div> - <div class="notok">$COUNT{NOTOK} show problems</div>
+return '</table>'.($COUNT{OK}||$COUNT{NOTOK}?"Totals: <div class=\"ok\">$COUNT{OK} checks are OK</div> - <div class=\"notok\">$COUNT{NOTOK} show problems</div>":'').<<FOOT;
 
 <p>&nbsp;<p>
 
