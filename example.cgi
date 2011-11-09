@@ -140,7 +140,8 @@ if ( !$user || param('logout') ) {
 				foreach my $s ( sort keys %{$details->{$g}} ) {
 					foreach my $rec ( sort {$a <=> $b } keys %{$details->{$g}->{$s}} ) {
 						my $detail = $details->{$g}->{$s}->{$rec};
-						my ($timestamp, $group, $system, $pgroup, @details) = $bc->blank(@$detail{qw/timestamp group system pgroup property status up_percent up_time value details/});
+						my ($group, $system, $pgroup, @details) = $bc->blank(@$detail{qw/group system pgroup property status up_percent up_time value details/});
+						my $timestamp = $group ? $detail->{timestamp} : '';
 						print Tr({-class=>'datarow'}, [
 							td({-bgcolor=>$timestamp?$detail->{tscolor}:'white', class=>$timestamp?'border':''}, [$timestamp]).
 							td({-bgcolor=>'white', class=>$group?'border':''}, [a({-href=>"/?list=systems&group=$g"}, $group) .' '. ($group?$lmi->{$g}->{_}:'')]).
