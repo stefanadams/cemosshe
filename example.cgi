@@ -32,6 +32,9 @@ use File::Path;
 use Date::Manip;
 use Digest::MD5 qw/md5_hex/;
 
+use lib '/usr/local/lib/cemosshe';
+use Blank::Cell;
+
 my $root = "/home/cemosshe/csv";
 
 new CGI;
@@ -105,11 +108,13 @@ if ( !$user || param('logout') ) {
 			print htmlmenu(\@menu, \@submenu);
 			print start_table;
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
+			my $bc = new Blank::Cell;
 			foreach my $g ( sort keys %{$details} ) {
 				foreach my $s ( sort keys %{$details->{$g}} ) {
+					my ($group) = $bc->blank($g);
 					my $count = $COUNT->{$g}->{$s};
 					print Tr({-class=>'datarow'}, [
-						td({-bgcolor=>'white', class=>$g?'border':''}, [$g]).
+						td({-bgcolor=>'white', class=>$group?'border':''}, [$group]).
 						td({-bgcolor=>'white', class=>'border'}, [a({-href=>'/?list=details&'.qs('group')."&system=$s&status=!INFO&status=!OK"}, $s) .' '. $lmi->{$g}->{$s}]).
 						td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($count->{TSOK}, $count->{TSWARN}, $count->{TSALERT})]).
 						td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($count->{OK}, $count->{WARN}, $count->{ALERT})])
@@ -130,16 +135,18 @@ if ( !$user || param('logout') ) {
 			print htmlmenu(\@menu, \@submenu);
 			print start_table;
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
+			my $bc = new Blank::Cell;
 			foreach my $g ( sort keys %{$details} ) {
 				foreach my $s ( sort keys %{$details->{$g}} ) {
 					foreach my $rec ( sort {$a <=> $b } keys %{$details->{$g}->{$s}} ) {
 						my $detail = $details->{$g}->{$s}->{$rec};
+						my ($timestamp, $group, $system, $pgroup, @details) = $bc->blank(@$detail{qw/timestamp group system pgroup property status up_percent up_time value details/});
 						print Tr({-class=>'datarow'}, [
-							td({-bgcolor=>$detail->{timestamp}?$detail->{tscolor}:'white', class=>$detail->{timestamp}?'border':''}, [$detail->{timestamp}]).
-							td({-bgcolor=>'white', class=>$g?'border':''}, [a({-href=>"/?list=systems&group=$g"}, $g) .' '. $lmi->{$g}->{_}]).
-							td({-bgcolor=>'white', class=>$s?'border':''}, [a({-href=>"/?list=details&group=$g&system=$s"}, $s) .' '. $lmi->{$g}->{$s}]).
-							td({-bgcolor=>'white', class=>$detail->{pgroup}?'border':''}, [$detail->{pgroup}]).
-							td({-bgcolor=>$detail->{color}, class=>"border$detail->{tscolor}"}, [@$detail{qw/property status up_percent up_time value details/}])
+							td({-bgcolor=>$timestamp?$detail->{tscolor}:'white', class=>$timestamp?'border':''}, [$timestamp]).
+							td({-bgcolor=>'white', class=>$group?'border':''}, [a({-href=>"/?list=systems&group=$g"}, $group) .' '. ($group?$lmi->{$g}->{_}:'')]).
+							td({-bgcolor=>'white', class=>$system?'border':''}, [a({-href=>"/?list=details&group=$g&system=$s"}, $system) .' '. ($system?$lmi->{$g}->{$s}:'')]).
+							td({-bgcolor=>'white', class=>$pgroup?'border':''}, [$pgroup]).
+							td({-bgcolor=>$detail->{color}, class=>"border$detail->{tscolor}"}, [@details])
 						]);
 					}
 				}
