@@ -36,21 +36,23 @@ my $root = "/home/cemosshe/csv";
 
 new CGI;
 my $session = new CGI::Session;
-my $user = &setupsession;
+my ($user, $pass) = &setupsession;
 
 my $TIMESTAMP = UnixDate(ParseDate('now'), '%Y-%m-%d %H:%M:%S');
 my $TIMESTAMPS = UnixDate(ParseDate($TIMESTAMP), '%s');
 my $COUNT = {};
 
 if ( !$user || param('logout') ) {
+	print "[Login form]";
 	$session->delete;
 	print &htmlhead;
 	print start_form('POST', '/');
 	print "Username: ", textfield('user'), br;
 	print "Password: ", password_field('pass'), br;
-	print submit;
+	print submit('login', 'Login');
 	print end_form;
 } elsif ( param('details') || param('sla') ) {
+	print STDERR "$user -=- $pass -=- ".param('systemgroup')." -=- ".param('systemname');
 	mkpath "$root/".param('systemgroup').'/'.param('systemname');
 	if ( param('details') && param('systemgroup') && param('systemname') && ($user eq 'admin' || $user eq param('systemgroup')) ) {
 		rename "$root/".param('systemgroup').'/'.param('systemname').'/details.csv', "$root/".param('systemgroup').'/'.param('systemname').'/details.csv~';
@@ -69,11 +71,12 @@ if ( !$user || param('logout') ) {
 		print "$root/".param('systemgroup').'/'.param('systemname')."/sla.csv\n";
 	}
 } else {
+	print STDERR "$user -=- $pass";
 	param('list', 'groups') unless param('list');
 	print a({-href=>'/?logout=1'}, $user),br;
 	print htmlhead();
 	if ( my ($details, $lmi) = &details ) {
-		print "Totals: <div class=\"ok\">000 checks are OK</div> - <div class=\"notok\">000 show problems</div>", br, br;
+		print "<div class=\"ok\">000 checks are OK</div> - <div class=\"notok\">000 show problems</div>", br, br;
 		if ( param('list') && param('list') eq 'groups' ) {
 			my @menu = ();
 			push @menu, a({-href=>'/?list=details&status=!INFO&status=!OK'}, 'All Not OK');
@@ -170,6 +173,7 @@ sub blank {
 sub qs {
 	my @qs = ();
 	foreach ( @_ ) {
+		next unless param($_);
 		push @qs, join '&', $_.'='.param($_);
 	}
 	return join '&', @qs;
@@ -312,7 +316,6 @@ sub setupsession {
 	$pass = $session->param('pass') if $session->param('pass');
 	$pass ||= '';
 
-	print STDERR "$user -=- $pass";
 	if ( $user && $pass ) {
 		open USERS, '.htpasswd' or die $!;
 		my @users = <USERS>;
@@ -340,11 +343,10 @@ sub setupsession {
 		$session->clear(['user','pass']);
 	}
 	$user = $session->param('user');
-	undef $pass;
 
 	print $session->header;
 
-	return $user;
+	return $user, $pass;
 }
 
 sub htmlmenu {
