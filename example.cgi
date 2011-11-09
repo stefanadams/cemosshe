@@ -33,7 +33,7 @@ use Date::Manip;
 use Digest::MD5 qw/md5_hex/;
 
 use lib '/usr/local/lib/cemosshe';
-use Blank::Cell;
+use Table::Wave;
 
 my $root = "/home/cemosshe/csv";
 
@@ -108,10 +108,10 @@ if ( !$user || param('logout') ) {
 			print htmlmenu(\@menu, \@submenu);
 			print start_table;
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
-			my $bc = new Blank::Cell;
+			my $tw = new Table::Wave;
 			foreach my $g ( sort keys %{$details} ) {
 				foreach my $s ( sort keys %{$details->{$g}} ) {
-					my ($group) = $bc->blank($g);
+					my ($group) = $tw->wave($g);
 					my $count = $COUNT->{$g}->{$s};
 					print Tr({-class=>'datarow'}, [
 						td({-bgcolor=>'white', class=>$group?'border':''}, [$group]).
@@ -135,12 +135,12 @@ if ( !$user || param('logout') ) {
 			print htmlmenu(\@menu, \@submenu);
 			print start_table;
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
-			my $bc = new Blank::Cell;
+			my $tw = new Table::Wave;
 			foreach my $g ( sort keys %{$details} ) {
 				foreach my $s ( sort keys %{$details->{$g}} ) {
 					foreach my $rec ( sort {$a <=> $b } keys %{$details->{$g}->{$s}} ) {
 						my $detail = $details->{$g}->{$s}->{$rec};
-						my ($group, $system, $pgroup, @details) = $bc->blank(@$detail{qw/group system pgroup property status up_percent up_time value details/});
+						my ($group, $system, $pgroup, @details) = $tw->wave(@$detail{qw/group system pgroup property/}), map { $detail->{$_} } qw/status up_percent up_time value details/;
 						my $timestamp = $group ? $detail->{timestamp} : '';
 						print Tr({-class=>'datarow'}, [
 							td({-bgcolor=>$timestamp?$detail->{tscolor}:'white', class=>$timestamp?'border':''}, [$timestamp]).
