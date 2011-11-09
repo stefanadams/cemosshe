@@ -21,15 +21,14 @@
 
 # This cgi is still a work in progress, but it's a start
 
-our $VERSION = '11.10.26';
+our $VERSION = '11.11.09';
 
 use strict;
 use warnings;
 
-use CGI qw/:standard/;
+use CGI qw/:standard *table/;
 use CGI::Session;
 use File::Path;
-use Sort::Fields;
 use Date::Manip;
 use Digest::MD5 qw/md5_hex/;
 
@@ -37,51 +36,11 @@ my $root = "/home/cemosshe/csv";
 
 new CGI;
 my $session = new CGI::Session;
-
-my $user = $ENV{USER} if $ENV{USER};
-$user = param('user') if param('user');
-$user = $session->param('user') if $session->param('user');
-$user ||= '';
-my $pass = md5_hex($ENV{PASS}) if $ENV{PASS};
-$pass = md5_hex(param('pass')) if param('pass');
-$pass = $session->param('pass') if $session->param('pass');
-$pass ||= '';
-
-print STDERR "$user -=- $pass";
-if ( $user && $pass ) {
-	open USERS, '.htpasswd' or die $!;
-	my @users = <USERS>;
-	close USERS;
-	if ( ! grep { /^$user:$pass$/ } @users ) {
-		# User / Password not found
-		if ( ! grep { /^$user:/ } @users ) {
-			# User not found
-			open USERS, '>>.htpasswd' or die $!;
-			print USERS "$user:$pass\n";
-			close USERS;
-			print STDERR "$0 added user $user\n";
-			$session->param('user', $user);
-			$session->param('pass', $pass);
-		} else {
-			# User found, therefore wrong password
-			$session->clear(['user','pass']);
-		}
-	} else {
-		$session->param('user', $user);
-		$session->param('pass', $pass);
-	}
-	undef @users;
-} else {
-	$session->clear(['user','pass']);
-}
-$user = $session->param('user');
-undef $pass;
+my $user = &setupsession;
 
 my $TIMESTAMP = UnixDate(ParseDate('now'), '%Y-%m-%d %H:%M:%S');
 my $TIMESTAMPS = UnixDate(ParseDate($TIMESTAMP), '%s');
-my %COUNT = (OK=>0, NOTOK=>0);
-
-print $session->header;
+my $COUNT = {};
 
 if ( !$user || param('logout') ) {
 	$session->delete;
@@ -110,227 +69,111 @@ if ( !$user || param('logout') ) {
 		print "$root/".param('systemgroup').'/'.param('systemname')."/sla.csv\n";
 	}
 } else {
-	param('list', 'groups') if $user && (param('user') || param('pass') || param('logout'));
-	my $list = param('list') || '';
-	my $group = param('group') || '';
-	my $system = param('system') || '';
-	my $timestamp = param('timestamp') || '';
-	my $status = param('status') || '';
+	param('list', 'groups') unless param('list');
 	print a({-href=>'/?logout=1'}, $user),br;
-	if ( $list eq 'groups' ) {
-		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "All Not OK").' / '.a({-href=>"/"}, "Group List"));
-		my @details = &details;
-		my @last = (('')x12);
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
-		my %details = ();
-		foreach ( @details ) {
-			my @detail = split m!;!;
-			my %color = ();
-			my $timestamp;
-			@{$details{$detail[2]}{LMI}} = lmi($detail[2], $detail[3]);
-			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
-				$timestamp = 'ALERT';
-				$color{timestamp}='red';
-			} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 1*60*60 ) {
-				$timestamp = 'WARN';
-				$color{timestamp}='yellow';
-			} else {
-				$timestamp = 'OK';
-				$color{timestamp}='green';
+	print htmlhead();
+	if ( my ($details, $lmi) = &details ) {
+		print "Totals: <div class=\"ok\">000 checks are OK</div> - <div class=\"notok\">000 show problems</div>", br, br;
+		if ( param('list') && param('list') eq 'groups' ) {
+			my @menu = ();
+			push @menu, a({-href=>'/?list=details&status=!INFO&status=!OK'}, 'All Not OK');
+			push @menu, a({-href=>'/?list=groups'}, 'Group List');
+			print htmlmenu(\@menu);
+			print start_table;
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
+			foreach my $g ( sort keys %{$details} ) {
+				my $count = $COUNT->{$g}->{_};
+				print Tr({-class=>'datarow'}, [
+					td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?list=systems&group=$g"}, $g) .' '. $lmi->{$g}->{_}]).
+					td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($count->{TSOK}, $count->{TSWARN}, $count->{TSALERT})]).
+					td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($count->{OK}, $count->{WARN}, $count->{ALERT})])
+				 ]), "\n";
 			}
-			if ( my @timestamp = param('timestamp') ) {
-				next unless grep { $_ eq $timestamp } @timestamp;
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
+			print end_table;
+		} elsif ( param('list') && param('list') eq 'systems' ) {
+			my @menu = ();
+			push @menu, a({-href=>'/?list=details&status=!INFO&status=!OK'}, 'All Not OK');
+			push @menu, a({-href=>'/?list=groups'}, 'Group List');
+			my @submenu = ();
+			push @submenu, a({-href=>'/?list=details&'.qs('group').'&status=!INFO&status=!OK'}, 'Not OK');
+			push @submenu, a({-href=>'/?list=details&'.qs('group').'&status=INFO'}, 'Info');
+			push @submenu, a({-href=>'/?list=details&'.qs('group')}, 'All');
+			print htmlmenu(\@menu, \@submenu);
+			print start_table;
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
+			foreach my $g ( sort keys %{$details} ) {
+				foreach my $s ( sort keys %{$details->{$g}} ) {
+					my $count = $COUNT->{$g}->{$s};
+					print Tr({-class=>'datarow'}, [
+						td({-bgcolor=>'white', class=>$g?'border':''}, [$g]).
+						td({-bgcolor=>'white', class=>'border'}, [a({-href=>'/?list=details&'.qs('group')."&system=$s&status=!INFO&status=!OK"}, $s) .' '. $lmi->{$g}->{$s}]).
+						td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($count->{TSOK}, $count->{TSWARN}, $count->{TSALERT})]).
+						td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($count->{OK}, $count->{WARN}, $count->{ALERT})])
+					]), "\n";
+				}
 			}
-			if ( $detail[6] eq 'ALERT' ) {
-				$color{status}='red';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'WARN' ) {
-				$color{status}='yellow';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'OK' ) {
-				$color{status}='green';
-				$COUNT{OK}++;
-			} elsif ( $detail[6] eq 'INFO' ) {
-				$color{status}='white';
-			} else {
-				$color{status}='blue';
-				$COUNT{NOTOK}++;
-			}
-			$detail[7] =~ s/(\.\d)0%$/$1%/;
-			$detail[7] =~ s/\.0%$/%/;
-			$details{$detail[2]}{SYSTEMS} = 0 unless $details{$detail[2]}{SYSTEMS};
-			$details{$detail[2]}{TSALERT} = 0 unless $details{$detail[2]}{TSALERT};
-			$details{$detail[2]}{TSWARN} = 0 unless $details{$detail[2]}{TSWARN};
-			$details{$detail[2]}{TSOK} = 0 unless $details{$detail[2]}{TSOK};
-			if ( $detail[3] ne $last[3] && $detail[3] ne 'TODO' ) {
-				$details{$detail[2]}{SYSTEMS}++;
-				$details{$detail[2]}{TSALERT}++ if $timestamp eq 'ALERT';
-				$details{$detail[2]}{TSWARN}++ if $timestamp eq 'WARN';
-				$details{$detail[2]}{TSOK}++ if $timestamp eq 'OK';
-			}
-			$details{$detail[2]}{$detail[6]} = 0 unless $details{$detail[2]}{$detail[6]};
-			$details{$detail[2]}{$detail[6]}++;
-			@last = split m!;!;
-		}
-		foreach ( sort keys %details ) {
-			my @lmi = @{$details{$_}{LMI}};
-			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?list=systems&group=$_"}, $_).($lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
-				td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($details{$_}{TSOK}, $details{$_}{TSWARN}, $details{$_}{TSALERT}, $details{$_}{SYSTEMS})]).
-				td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($details{$_}{OK}, $details{$_}{WARN}, $details{$_}{ALERT})])
-				#td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
-				#td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
-				#td({-bgcolor=>'red', class=>'border'}, [$details{$_}{ALERT}]).
-				#td({-bgcolor=>'blue', class=>'border'}, [$details{$_}{UNDEF}])
-			]), "\n";
-		}
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
-		print &htmlfoot;
-	} elsif ( $list eq 'systems' ) {
-		print htmlhead(a({-href=>"/?status=!INFO&status=!OK&group=$group"}, "All Not OK").' / '.a({-href=>"/?list=groups"}, "Group List"));
-		my @details = &details;
-		my @last = (('')x12);
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
-		my %details = ();
-		foreach ( @details ) {
-			my @detail = split m!;!;
-			my %color = ();
-			my $timestamp;
-next if $detail[3] eq 'TODO';
-			@{$details{"$detail[2];$detail[3]"}{LMI}} = lmi($detail[2], $detail[3]);
-			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
-				$timestamp = 'ALERT';
-				$color{timestamp}='red';
-			} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 1*60*60 ) {
-				$timestamp = 'WARN';
-				$color{timestamp}='yellow';
-			} else {
-				$timestamp = 'OK';
-				$color{timestamp}='green';
-			}
-			if ( my @timestamp = param('timestamp') ) {
-				next unless grep { $_ eq $timestamp } @timestamp;
-			}
-			if ( $detail[6] eq 'ALERT' ) {
-				$color{status}='red';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'WARN' ) {
-				$color{status}='yellow';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'OK' ) {
-				$color{status}='green';
-				$COUNT{OK}++;
-			} elsif ( $detail[6] eq 'INFO' ) {
-				$color{status}='white';
-			} else {
-				$color{status}='blue';
-				$COUNT{NOTOK}++;
-			}
-			$detail[7] =~ s/(\.\d)0%$/$1%/;
-			$detail[7] =~ s/\.0%$/%/;
-			$details{"$detail[2];$detail[3]"}{TSALERT} = 0 unless $details{"$detail[2];$detail[3]"}{TSALERT};
-			$details{"$detail[2];$detail[3]"}{TSWARN} = 0 unless $details{"$detail[2];$detail[3]"}{TSWARN};
-			$details{"$detail[2];$detail[3]"}{TSOK} = 0 unless $details{"$detail[2];$detail[3]"}{TSOK};
-			if ( $detail[3] ne $last[3] && $detail[3] ne 'TODO' ) {
-				$details{"$detail[2];$detail[3]"}{TSALERT}++ if $timestamp eq 'ALERT';
-				$details{"$detail[2];$detail[3]"}{TSWARN}++ if $timestamp eq 'WARN';
-				$details{"$detail[2];$detail[3]"}{TSOK}++ if $timestamp eq 'OK';
-			}
-			$details{"$detail[2];$detail[3]"}{$detail[6]} = 0 unless $details{"$detail[2];$detail[3]"}{$detail[6]};
-			$details{"$detail[2];$detail[3]"}{$detail[6]}++;
-			@last = split m!;!;
-		}
-		my $last = '';
-		foreach ( sort keys %details ) {
-			my ($g, $s) = split m!;!;
-			my @lmi = @{$details{$_}{LMI}};
-			$g='' if $g eq $last;
-			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>'white', class=>$g?'border':''}, [$g]).
-				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?group=$group&system=$s&status=!INFO&status=!OK"}, $s).($lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
-				td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($details{$_}{TSOK}, $details{$_}{TSWARN}, $details{$_}{TSALERT})]).
-				td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($details{$_}{OK}, $details{$_}{WARN}, $details{$_}{ALERT})])
-				#td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
-				#td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
-				#td({-bgcolor=>'red', class=>'border'}, [$details{$_}{ALERT}]).
-				#td({-bgcolor=>'blue', class=>'border'}, [$details{$_}{UNDEF}])
-			]), "\n";
-			$last = $g if $g;
-		}
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
-		print &htmlfoot;
-	} else {
-		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "All Not OK").' / '.a({-href=>"/?list=groups"}, "Group List").' / '.a({-href=>"/?list=systems&group=$group"}, "System List").br.a({-href=>"/?group=$group&system=$system&status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/?group=$group&system=$system&status=INFO"}, "Info").' / '.a({-href=>"/?group=$group&system=$system"}, "All"));
-		my @details = &details;
-		my @last = (('')x12);
-		foreach ( @details ) {
-			my @detail = split m!;!;
-			my @lmi = lmi($detail[2], $detail[3]);
-			my @status = ();
-			if ( @status = grep { /^!/ } param('status') ) {
-				next if grep { $_ eq "!$detail[6]" } @status;
-			} elsif ( @status = grep { /^[^!]/ } param('status') ) {
-				next unless grep { $_ eq $detail[6] } @status;
-			}
-			my %color = ();
-			my $timestamp;
-			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
-				$timestamp = 'ALERT';
-				$color{timestamp}='red';
-			} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 1*60*60 ) {
-				$timestamp = 'WARN';
-				$color{timestamp}='yellow';
-			} else {
-				$timestamp = 'OK';
-				$color{timestamp}='green';
-			}
-			if ( my @timestamp = param('timestamp') ) {
-				next unless grep { $_ eq $timestamp } @timestamp;
-			}
-			if ( $detail[6] eq 'ALERT' ) {
-				$color{status}='red';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'WARN' ) {
-				$color{status}='yellow';
-				$COUNT{NOTOK}++;
-			} elsif ( $detail[6] eq 'OK' ) {
-				$color{status}='green';
-				$COUNT{OK}++;
-			} elsif ( $detail[6] eq 'INFO' ) {
-				$color{status}='white';
-			} else {
-				$color{status}='blue';
-				$COUNT{NOTOK}++;
-			}
-			$detail[7] =~ s/(\.\d)0%$/$1%/;
-			$detail[7] =~ s/\.0%$/%/;
-			do { $detail[0]=''; $detail[1]=''; } if $detail[3] eq $last[3];
-			$detail[2]='' if $detail[2] eq $last[2];
-			$detail[3]='' if $detail[3] eq $last[3] && !$detail[2];
-			$detail[4]='' if $detail[4] eq $last[4] && !$detail[3];
-			$detail[5]='' if $detail[5] eq $last[5] && !$detail[4];
-			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]) if $detail[0] && $detail[1] && $detail[2] && $detail[3] && $detail[4] && $detail[5];
-			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>$detail[0]||$detail[1]?$color{timestamp}:'white', class=>$detail[0]||$detail[1]?'border':''}, ["$detail[0] $detail[1]"]).
-				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?group=$detail[2]"}, $detail[2]).($detail[2] && $lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
-				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?group=$detail[2]&system=$detail[3]"}, $detail[3]).($detail[3] && $lmi[1] ? ' '.a({href=>$lmi[1]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
-				td({-bgcolor=>'white', class=>$detail[4]?'border':''}, [$detail[4]]).
-				td({-bgcolor=>$color{status}, class=>"border$color{timestamp}"}, [@detail[5..10]])
-			]);
-			@last = split m!;!;
-		}
-		if ( $last[0] ) {
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
+			print end_table;
+		} elsif ( param('list') && param('list') eq 'details' ) {
+			my @menu = ();
+			push @menu, a({-href=>'/?list=details&status=!INFO&status=!OK'}, 'All Not OK');
+			push @menu, a({-href=>'/?list=groups'}, 'Group List');
+			push @menu, a({-href=>'/?list=systems&'.qs('group')}, 'System List');
+			my @submenu = ();
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system').'&status=!INFO&status=!OK'}, 'Not OK');
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system').'&status=INFO'}, 'Info');
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system')}, 'All');
+			print htmlmenu(\@menu, \@submenu);
+			print start_table;
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
+			foreach my $g ( sort keys %{$details} ) {
+				foreach my $s ( sort keys %{$details->{$g}} ) {
+					foreach my $rec ( sort {$a <=> $b } keys %{$details->{$g}->{$s}} ) {
+						my $detail = $details->{$g}->{$s}->{$rec};
+						print Tr({-class=>'datarow'}, [
+							td({-bgcolor=>$detail->{timestamp}?$detail->{tscolor}:'white', class=>$detail->{timestamp}?'border':''}, [$detail->{timestamp}]).
+							td({-bgcolor=>'white', class=>$g?'border':''}, [a({-href=>"/?list=systems&group=$g"}, $g) .' '. $lmi->{$g}->{_}]).
+							td({-bgcolor=>'white', class=>$s?'border':''}, [a({-href=>"/?list=details&group=$g&system=$s"}, $s) .' '. $lmi->{$g}->{$s}]).
+							td({-bgcolor=>'white', class=>$detail->{pgroup}?'border':''}, [$detail->{pgroup}]).
+							td({-bgcolor=>$detail->{color}, class=>"border$detail->{tscolor}"}, [@$detail{qw/property status up_percent up_time value details/}])
+						]);
+					}
+				}
+			}
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
+			print end_table;
 		} else {
-			print br,"Nothing to report for ".join(' / ', a({-href=>"?list=systems&group=$group"}, $group), $system).'.';
+			print br, "404";
 		}
-		print &htmlfoot;
-
+	} else {
+		print br,'Nothing to report.';
 	}
+	print &htmlfoot;
 }
 $session->flush;
 
 # --------------------------------------------------
+
+sub blank {
+	my ($this, $last) = @_;
+	my @this = @$this;
+	my @last = @$last;
+	do { $this[0]=''; $this[1]=''; } if $this[3] eq $last[3];
+	$this[2]='' if $this[2] eq $last[2];
+	$this[3]='' if $this[3] eq $last[3] && !$this[2];
+	$this[4]='' if $this[4] eq $last[4] && !$this[3];
+	$this[5]='' if $this[5] eq $last[5] && !$this[4];
+	return @this;
+}
+
+sub qs {
+	my @qs = ();
+	foreach ( @_ ) {
+		push @qs, join '&', $_.'='.param($_);
+	}
+	return join '&', @qs;
+}
 
 sub bar {
 	@_ = map { $_ || 0 } @_;
@@ -347,44 +190,167 @@ sub bar {
 	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$Number}, "$_[0]+$_[1]+$_[2]=$number").div({-style=>$Green}, '&nbsp;').div({-style=>$Yellow}, '&nbsp;').div({-style=>$Red}, '&nbsp;')).br;
 }
 
-sub lmi {
-	my ($group, $system) = @_;
-	my @lmi = ('', '');
-	open LMI, "$root/$group/.lmi" and do {
-		$lmi[0] = <LMI>;
-		close LMI;
-	};
-	open LMI, "$root/$group/$system/.lmi" and do {
-		$lmi[1] = <LMI>;
-		close LMI;
-	};
-	return @lmi;
+sub details {
+	my $details = {};
+	my $lmi = {};
+	opendir ROOT, $root or die $!;
+	while ( my $group = readdir(ROOT) ) {
+		next if $group =~ /^\./;
+		next if param('group') && param('group') ne $group;
+		next unless $user eq 'admin' || $user eq $group;
+		next unless -d "$root/$group";
+		open LMI, "$root/$group/.lmi" and do {
+			$lmi->{$group}->{_} = a({-href=><LMI>}, img({-src=>'/lmi_title_rc.png', -border=>0, -width=>16, -height=>16}));
+			close LMI;
+		};
+		$lmi->{$group}->{_} ||= '';
+		opendir SYSTEMGROUP, "$root/$group" or die $!;
+		while ( my $system = readdir(SYSTEMGROUP) ) {
+			next if $system =~ /^\./;
+			next if param('system') && param('system') ne $system;
+			next unless -d "$root/$group/$system";
+			open LMI, "$root/$group/$system/.lmi" and do {
+				$lmi->{$group}->{$system} = a({-href=><LMI>}, img({-src=>'/lmi_title_rc.png', -border=>0, -width=>16, -height=>16}));
+				close LMI;
+			};
+			$lmi->{$group}->{$system} ||= '';
+			open DETAILS, "$root/$group/$system/details.csv" or next;
+			my @last = (('')x12);
+			while ( $_ = <DETAILS> ) {
+				local @_ = split m!;!;
+				my $tscolor = '';
+				my $tsstatus = '';
+				if ( $TIMESTAMPS-UnixDate(ParseDate("$_[0] $_[1]"), '%s') >= 24*60*60 ) {
+					$tsstatus = 'ALERT';
+					$tscolor = 'red';
+				} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$_[0] $_[1]"), '%s') >= 1*60*60 ) {
+					$tsstatus = 'WARN';
+					$tscolor = 'yellow';
+				} else {
+					$tsstatus = 'OK';
+					$tscolor = 'green';
+				}
+				my $color = '';
+				if ( $_[6] eq 'ALERT' ) {
+					$color='red';
+				} elsif ( $_[6] eq 'WARN' ) {
+					$color='yellow';
+				} elsif ( $_[6] eq 'OK' ) {
+					$color='green';
+				} elsif ( $_[6] eq 'INFO' ) {
+					$color='white';
+				} else {
+					$color='blue';
+				}
+				$_[7] =~ s/(\.\d)0%$/$1%/;
+				$_[7] =~ s/\.0%$/%/;
+				next if $_[6] eq 'INFO' && !param('system') && not grep { $_ eq 'INFO' } param('status');
+
+				next unless want({timestamp=>0,group=>2,system=>3,pgroup=>4,property=>5,status=>6}, $tsstatus, @_[1..$#_]);
+
+				$COUNT->{$_[2]}->{_}->{$_[6]} ||= 0;
+				$COUNT->{$_[2]}->{_}->{$_[6]}++;
+				$COUNT->{$_[2]}->{$_[3]}->{$_[6]} ||= 0;
+				$COUNT->{$_[2]}->{$_[3]}->{$_[6]}++;
+				$COUNT->{$_[2]}->{_}->{NOTOK} ||= 0;
+				$COUNT->{$_[2]}->{_}->{NOTOK}++ unless $_[6] eq 'INFO' || $_[6] eq 'OK';
+				$COUNT->{$_[2]}->{$_[3]}->{NOTOK} ||= 0;
+				$COUNT->{$_[2]}->{$_[3]}->{NOTOK}++ unless $_[6] eq 'INFO' || $_[6] eq 'OK';
+				$COUNT->{$_[2]}->{_}->{'TS'.$tsstatus} ||= 0;
+				$COUNT->{$_[2]}->{_}->{'TS'.$tsstatus}=1;
+				$COUNT->{$_[2]}->{$_[3]}->{'TS'.$tsstatus} ||= 0;
+				$COUNT->{$_[2]}->{$_[3]}->{'TS'.$tsstatus}=1;
+
+				$details->{$group}->{$system}->{$.} = {
+					date=>$_[0],
+					time=>$_[1],
+					timestamp=>"$_[0] $_[1]",
+					tsstatus=>$tsstatus,
+					tscolor=>$tscolor,
+					group=>$_[2],
+					system=>$_[3],
+					pgroup=>$_[4],
+					property=>$_[5],
+					status=>$_[6],
+					color=>$color,
+					up_percent=>$_[7],
+					up_time=>$_[8],
+					value=>$_[9],
+					details=>$_[6] eq 'INFO' && !param('system') && (grep { $_ eq 'INFO' } param('status')) && length($_[-1]) > 1000 ? a({-href=>"/?list=details&group=$_[2]&system=$_[3]&status=INFO"}, "Too large, click here to drill down") : $_[-1],
+				};
+	#			push @details, $_ if (!param('pgroup') && !param('property')) || (param('pgroup') && param('pgroup') eq $_[4]) || (param('property') && param('property') eq $_[5]);
+			}
+			close DETAILS;
+		}
+		closedir SYSTEMGROUP;
+	}
+	closedir ROOT;
+	return (keys %{$details} ? $details : undef), (keys %{$lmi} ? $lmi : undef);
 }
 
-sub details {
-my @details = ();
-opendir ROOT, $root or die $!;
-while ( my $systemgroup = readdir(ROOT) ) {
-	next if $systemgroup =~ /^\./;
-	next if param('group') && param('group') ne $systemgroup;
-	next unless $user eq 'admin' || $user eq $systemgroup;
-	next unless -d "$root/$systemgroup";
-	opendir SYSTEMGROUP, "$root/$systemgroup" or die $!;
-	while ( my $system = readdir(SYSTEMGROUP) ) {
-		next if $system =~ /^\./;
-		next if param('system') && param('system') ne $system;
-		next unless -d "$root/$systemgroup/$system";
-		open DETAILS, "$root/$systemgroup/$system/details.csv" or next;
-		while ( $_ = <DETAILS> ) {
-			local @_ = split m!;!;
-			push @details, $_ if (!param('pgroup') && !param('property')) || (param('pgroup') && param('pgroup') eq $_[4]) || (param('property') && param('property') eq $_[5]);
+sub want {
+	my $want = shift;
+	my $ok = 0;
+	while ( my ($param, $field) = each(%{$want}) ) {
+		my @param = ();
+		if ( @param = grep { /^!/ } param($param) ) {
+			return 0 if grep { $_ eq "!$_[$field]" } @param;
+		} elsif ( @param = grep { /^[^!]/ } param($param) ) {
+			return 0 unless grep { $_ eq $_[$field] } @param;
 		}
-		close DETAILS;
 	}
-	closedir SYSTEMGROUP;
+	return 1;
 }
-closedir ROOT;
-return fieldsort ';', [3,4], @details;
+
+sub setupsession {
+	my $user = $ENV{USER} if $ENV{USER};
+	$user = param('user') if param('user');
+	$user = $session->param('user') if $session->param('user');
+	$user ||= '';
+	my $pass = md5_hex($ENV{PASS}) if $ENV{PASS};
+	$pass = md5_hex(param('pass')) if param('pass');
+	$pass = $session->param('pass') if $session->param('pass');
+	$pass ||= '';
+
+	print STDERR "$user -=- $pass";
+	if ( $user && $pass ) {
+		open USERS, '.htpasswd' or die $!;
+		my @users = <USERS>;
+		close USERS;
+		if ( ! grep { /^$user:$pass$/ } @users ) {
+			# User / Password not found
+			if ( ! grep { /^$user:/ } @users ) {
+				# User not found
+				open USERS, '>>.htpasswd' or die $!;
+				print USERS "$user:$pass\n";
+				close USERS;
+				print STDERR "$0 added user $user\n";
+				$session->param('user', $user);
+				$session->param('pass', $pass);
+			} else {
+				# User found, therefore wrong password
+				$session->clear(['user','pass']);
+			}
+		} else {
+			$session->param('user', $user);
+			$session->param('pass', $pass);
+		}
+		undef @users;
+	} else {
+		$session->clear(['user','pass']);
+	}
+	$user = $session->param('user');
+	undef $pass;
+
+	print $session->header;
+
+	return $user;
+}
+
+sub htmlmenu {
+	my @menu = ref $_[0] eq 'ARRAY' ? @{$_[0]} : ();
+	my @submenu = ref $_[1] eq 'ARRAY' ? @{$_[1]} : ();
+	return join(br, join(' / ', @menu), join (' / ', @submenu));
 }
 
 sub htmlhead {
@@ -461,23 +427,17 @@ table { padding: 2px; border-collapse: collapse; }
 <body>
 <center>
 <h1>CeMoSSHe System Status</h1>
-$_[0]
 <p>
 $TIMESTAMP
 <br>
-<table>
 HEAD
 }
 
 sub htmlfoot {
-return '</table>'.($COUNT{OK}||$COUNT{NOTOK}?"Totals: <div class=\"ok\">$COUNT{OK} checks are OK</div> - <div class=\"notok\">$COUNT{NOTOK} show problems</div>":'').<<FOOT;
-
+return <<FOOT;
 <p>&nbsp;<p>
-
 <font size="-2">Monitoring with <a href="http://www.cogent-it.com/software/cemosshe/">CeMoSShE</a>
-
 </center>
-
 </body>
 </html>
 FOOT
