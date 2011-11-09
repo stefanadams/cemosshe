@@ -122,6 +122,8 @@ if ( !$user || param('logout') ) {
 			my @detail = split m!;!;
 			my %color = ();
 			my $timestamp;
+next if $detail[3] eq 'TODO';
+			@{$details{$detail[2]}{LMI}} = lmi($detail[2], $detail[3]);
 			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
 				$timestamp = 'ALERT';
 				$color{timestamp}='red';
@@ -167,8 +169,9 @@ if ( !$user || param('logout') ) {
 			@last = split m!;!;
 		}
 		foreach ( sort keys %details ) {
+			my @lmi = @{$details{$_}{LMI}};
 			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?status=!INFO&status=!OK&group=$_"}, $_)]).
+				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?status=!INFO&status=!OK&group=$_"}, $_).($lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
 				td({-bgcolor=>'white', class=>'border'}, [$details{$_}{SYSTEMS}]).
 				td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($details{$_}{TSOK}, $details{$_}{TSWARN}, $details{$_}{TSALERT}, $details{$_}{SYSTEMS})]).
 				td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($details{$_}{OK}, $details{$_}{WARN}, $details{$_}{ALERT})])
@@ -259,7 +262,7 @@ sub bar {
 	$yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; height: 10px;  z-index: 2; vertical-align: top; ";
 	$red = "display: inline; background-color: red; position: absolute; width: $red%; height: 10px;  z-index: 1; vertical-align: top; ";
 	$number = "display: inline; position: absolute; width: 100%; height: 10px;  z-index: 4; text-align: center; vertical-align: top; ";
-	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$green}, '&nbsp;').div({-style=>$yellow}, '&nbsp;').div({-style=>$red}, '&nbsp;'));
+	return div({-style=>"position: relative; vertical-align: top; ", -alt=>"$_[0] / $_[1] / $_[2]"}, div({-style=>$green}, '&nbsp;').div({-style=>$yellow}, '&nbsp;').div({-style=>$red}, '&nbsp;'));
 }
 
 sub lmi {
