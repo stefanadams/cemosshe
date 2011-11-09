@@ -1,4 +1,5 @@
 #!/bin/sh
+# v11.11.08
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
@@ -34,7 +35,7 @@
 
 function ForceStatus () {
     CemossheLog "$FUNCNAME $1 $2"
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME $1;$2;0;" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$1;$2;0;$3" >> $TEMPDIR/tmp.$$.collected.tmp
 }
 
 #---------------------------------------------------------

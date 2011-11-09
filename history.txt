@@ -50,6 +50,12 @@ please check there for updates prior to submitting patches!
 
 ------------------------------------------------------------------------
 
+v11.11.08
+    Stefan Adams <stefan@cogentinnovators.com>
+        - Added bar graph on example.cgi
+	- Added LogMeIn shortcut to example.cgi
+	- Finished basic feature set of example.cgi
+
 v11.10.26
     Stefan Adams <stefan@cogentinnovators.com>
         - Just some minor cleanups

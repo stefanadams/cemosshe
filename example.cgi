@@ -21,7 +21,7 @@
 
 # This cgi is still a work in progress, but it's a start
 
-our $VERSION = '11.10.26';
+our $VERSION = '11.11.08';
 
 use strict;
 use warnings;
@@ -92,40 +92,57 @@ if ( !$user || param('logout') ) {
 	print submit;
 	print end_form;
 } elsif ( param('details') || param('sla') ) {
-	mkpath '/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname');
+	mkpath "$root/".param('systemgroup').'/'.param('systemname');
 	if ( param('details') && param('systemgroup') && param('systemname') && ($user eq 'admin' || $user eq param('systemgroup')) ) {
-		rename '/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname').'/details.csv', '/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname').'/details.csv~';
-		open DETAILS, '>/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname').'/details.csv' or die $!;
+		rename "$root/".param('systemgroup').'/'.param('systemname').'/details.csv', "$root/".param('systemgroup').'/'.param('systemname').'/details.csv~';
+		open DETAILS, ">$root/".param('systemgroup').'/'.param('systemname').'/details.csv' or die $!;
 		print DETAILS param('details');
 		close DETAILS;
-		chmod 0664, glob('/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname').'/*');
-		print '/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname')."/details.csv\n";
+		chmod 0664, glob("$root/".param('systemgroup').'/'.param('systemname').'/*');
+		print "$root/".param('systemgroup').'/'.param('systemname')."/details.csv\n";
 	}
 	if ( param('sla') && param('systemgroup') && param('systemname') && ($user eq 'admin' || $user eq param('systemgroup')) ) {
-		rename '/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname').'/sla.csv', '/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname').'/sla.csv~';
-		open DETAILS, '>/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname').'/sla.csv' or die $!;
+		rename "$root/".param('systemgroup').'/'.param('systemname').'/sla.csv', "$root/".param('systemgroup').'/'.param('systemname').'/sla.csv~';
+		open DETAILS, ">$root/".param('systemgroup').'/'.param('systemname').'/sla.csv' or die $!;
 		print DETAILS param('sla');
 		close DETAILS;
-		chmod 0664, glob('/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname').'/*');
-		print '/home/cemosshe/csv/'.param('systemgroup').'/'.param('systemname')."/sla.csv\n";
+		chmod 0664, glob("$root/".param('systemgroup').'/'.param('systemname').'/*');
+		print "$root/".param('systemgroup').'/'.param('systemname')."/sla.csv\n";
 	}
 } else {
 	print a({-href=>'/?logout=1'}, $user),br;
+<<<<<<< HEAD:example.cgi
 	if ( param('list') eq 'groups' ) {
 		print &htmlhead;
+=======
+	@_ = grep { !/(details|sla|logout|user|pass)$/ } param;
+	if ( $#_ == -1 || param('list') eq 'groups' ) {
+		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
+>>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 		my @details = &details;
 		my @last = (('')x12);
+<<<<<<< HEAD:example.cgi
 		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Systems', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
+=======
+		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'Status']) ]);
+>>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 		my %details = ();
 		foreach ( @details ) {
 			my @detail = split m!;!;
 			my %color = ();
+			my $timestamp;
 			if ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 24*60*60 ) {
+				$timestamp = 'ALERT';
 				$color{timestamp}='red';
 			} elsif ( $TIMESTAMPS-UnixDate(ParseDate("$detail[0] $detail[1]"), '%s') >= 1*60*60 ) {
+				$timestamp = 'WARN';
 				$color{timestamp}='yellow';
 			} else {
+				$timestamp = 'OK';
 				$color{timestamp}='green';
+			}
+			if ( my @timestamp = param('timestamp') ) {
+				next unless grep { $_ eq $timestamp } @timestamp;
 			}
 			if ( $detail[6] eq 'ALERT' ) {
 				$color{status}='red';
@@ -145,30 +162,52 @@ if ( !$user || param('logout') ) {
 			$detail[7] =~ s/(\.\d)0%$/$1%/;
 			$detail[7] =~ s/\.0%$/%/;
 			$details{$detail[2]}{SYSTEMS} = 0 unless $details{$detail[2]}{SYSTEMS};
-			$details{$detail[2]}{SYSTEMS}++ if $detail[3] ne $last[3];
+			$details{$detail[2]}{TSALERT} = 0 unless $details{$detail[2]}{TSALERT};
+			$details{$detail[2]}{TSWARN} = 0 unless $details{$detail[2]}{TSWARN};
+			$details{$detail[2]}{TSOK} = 0 unless $details{$detail[2]}{TSOK};
+			if ( $detail[3] ne $last[3] && $detail[3] ne 'TODO' ) {
+				$details{$detail[2]}{SYSTEMS}++;
+				$details{$detail[2]}{TSALERT}++ if $timestamp eq 'ALERT';
+				$details{$detail[2]}{TSWARN}++ if $timestamp eq 'WARN';
+				$details{$detail[2]}{TSOK}++ if $timestamp eq 'OK';
+			}
 			$details{$detail[2]}{$detail[6]} = 0 unless $details{$detail[2]}{$detail[6]};
 			$details{$detail[2]}{$detail[6]}++;
 			@last = split m!;!;
 		}
-		foreach ( keys %details ) {
+		foreach ( sort keys %details ) {
 			print Tr({-class=>'datarow'}, [
-				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?list=full&group=$_"}, $_)]).
+				td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?status=!INFO&status=!OK&group=$_"}, $_)]).
 				td({-bgcolor=>'white', class=>'border'}, [$details{$_}{SYSTEMS}]).
-				td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
-				td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
-				td({-bgcolor=>'red', class=>'border'}, [$details{$_}{ALERT}]).
-				td({-bgcolor=>'blue', class=>'border'}, [$details{$_}{UNDEF}])
-			]);
+				td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($details{$_}{TSOK}, $details{$_}{TSWARN}, $details{$_}{TSALERT}, $details{$_}{SYSTEMS})]).
+				td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($details{$_}{OK}, $details{$_}{WARN}, $details{$_}{ALERT})])
+				#td({-bgcolor=>'green', class=>'border'}, [$details{$_}{OK}]).
+				#td({-bgcolor=>'yellow', class=>'border'}, [$details{$_}{WARN}]).
+				#td({-bgcolor=>'red', class=>'border'}, [$details{$_}{ALERT}]).
+				#td({-bgcolor=>'blue', class=>'border'}, [$details{$_}{UNDEF}])
+			]), "\n";
 		}
-		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Systems', 'OK', 'WARN', 'ALERT', 'UNDEF']) ]);
+		print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', '#', 'Timestamp', 'Status']) ]);
 		print &htmlfoot;
 	} else {
+<<<<<<< HEAD:example.cgi
 		print &htmlhead;
+=======
+		print htmlhead(a({-href=>"/?status=!INFO&status=!OK"}, "Not OK").' / '.a({-href=>"/"}, "Group List"));
+>>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 		my @details = &details;
 		my @last = (('')x12);
 		foreach ( @details ) {
 			my @detail = split m!;!;
+<<<<<<< HEAD:example.cgi
 			if ( my @status = param('status') ) {
+=======
+			my @lmi = lmi($detail[2], $detail[3]);
+			my @status = ();
+			if ( @status = grep { /^!/ } param('status') ) {
+				next if grep { $_ eq "!$detail[6]" } @status;
+			} elsif ( @status = grep { /^[^!]/ } param('status') ) {
+>>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 				next unless grep { $_ eq $detail[6] } @status;
 			}
 			my %color = ();
@@ -211,8 +250,8 @@ if ( !$user || param('logout') ) {
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]) if $detail[0] && $detail[1] && $detail[2] && $detail[3] && $detail[4] && $detail[5];
 			print Tr({-class=>'datarow'}, [
 				td({-bgcolor=>$detail[0]||$detail[1]?$color{timestamp}:'white', class=>$detail[0]||$detail[1]?'border':''}, ["$detail[0] $detail[1]"]).
-				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?list=full&group=$detail[2]"}, $detail[2])]).
-				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?list=full&group=$detail[2]&system=$detail[3]"}, $detail[3])]).
+				td({-bgcolor=>'white', class=>$detail[2]?'border':''}, [a({-href=>"/?group=$detail[2]"}, $detail[2]).($detail[2] && $lmi[0] ? ' '.a({href=>$lmi[0]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
+				td({-bgcolor=>'white', class=>$detail[3]?'border':''}, [a({-href=>"/?group=$detail[2]&system=$detail[3]"}, $detail[3]).($detail[3] && $lmi[1] ? ' '.a({href=>$lmi[1]}, img({-src=>"/lmi_title_rc.png", -border=>0, -width=>16, -height=>16})) : '')]).
 				td({-bgcolor=>'white', class=>$detail[4]?'border':''}, [$detail[4]]).
 				td({-bgcolor=>$color{status}, class=>"border$color{timestamp}"}, [@detail[5..10]])
 			]);
@@ -225,6 +264,35 @@ if ( !$user || param('logout') ) {
 $session->flush;
 
 # --------------------------------------------------
+
+sub bar {
+	my ($green, $yellow, $red, $number) = @_;
+	$number = $green + $yellow + $red unless $number;
+	return undef unless $number;
+	$green = $green/$number*100;
+	$yellow = $green+($yellow/$number*100);
+	$red = $yellow+($red/$number*100);
+	$green = "display: inline; background-color: green; position: absolute; width: $green%; height: 10px;  z-index: 3; vertical-align: top; ";
+	$yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; height: 10px;  z-index: 2; vertical-align: top; ";
+	$red = "display: inline; background-color: red; position: absolute; width: $red%; height: 10px;  z-index: 1; vertical-align: top; ";
+	$number = "display: inline; position: absolute; width: 100%; height: 10px;  z-index: 4; text-align: center; vertical-align: top; ";
+	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$green}, '&nbsp;').div({-style=>$yellow}, '&nbsp;').div({-style=>$red}, '&nbsp;'));
+}
+
+sub lmi {
+	my ($group, $system) = @_;
+	my @lmi = ('', '');
+	open LMI, "$root/$group/.lmi" and do {
+		$lmi[0] = <LMI>;
+		close LMI;
+	};
+	open LMI, "$root/$group/$system/.lmi" and do {
+		$lmi[1] = <LMI>;
+		close LMI;
+	};
+	return @lmi;
+}
+
 sub details {
 my @details = ();
 opendir ROOT, $root or die $!;
@@ -314,6 +382,10 @@ table { padding: 2px; border-collapse: collapse; }
 .bordergreen { border: 1px solid black; }
 .borderyellow { border: 3px solid gold; }
 .borderred { border: 3px solid firebrick; }
+<<<<<<< HEAD:example.cgi
+=======
+.nospacing { border-collapse: collapse; padding: 0px; border-spacing: 0px; margin: 0px; }
+>>>>>>> 2e892e1909de67acdac4edbb8286a49ed50e5a24:example.cgi
 -->
 </style> 
 </head>
@@ -321,15 +393,7 @@ table { padding: 2px; border-collapse: collapse; }
 <body>
 <center>
 <h1>CeMoSSHe System Status</h1>
-<a href="/?list=full">Full Status of All</a> 
-&nbsp; / &nbsp;
-<a href="/?list=groups">Group List</a>
-<!--
-&nbsp; / &nbsp;
-<a href="/?list=properties">Properties List</a> 
-&nbsp; / &nbsp;
-<a href="/?list=notok">Reduced Status - Not OK</a>
--->
+$_[0]
 <p>
 $TIMESTAMP
 <br>
