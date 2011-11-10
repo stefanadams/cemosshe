@@ -86,16 +86,15 @@ if ( !$user || param('logout') ) {
 			push @menu, a({-href=>'/?list=groups'}, 'Group List');
 			print htmlmenu(\@menu);
 			print start_table;
-			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Status']) ]);
 			foreach my $g ( sort keys %{$details} ) {
 				my $count = $COUNT->{$g}->{_};
 				print Tr({-class=>'datarow'}, [
-					td({-bgcolor=>'white', class=>'border'}, [a({-href=>"/?list=systems&group=$g"}, $g) .' '. $lmi->{$g}->{_}]).
-					td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($count->{TSOK}, $count->{TSWARN}, $count->{TSALERT})]).
+					td({-bgcolor=>'white', class=>'border', width=>'150px'}, [bar($count->{TSOK}, $count->{TSWARN}, $count->{TSALERT}, a({-href=>"/?list=systems&group=$g"}, $g) .' '. $lmi->{$g}->{_})]).
 					td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($count->{OK}, $count->{WARN}, $count->{ALERT})])
 				 ]), "\n";
 			}
-			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Timestamp', 'Status']) ]);
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'Status']) ]);
 			print end_table;
 		} elsif ( param('list') && param('list') eq 'systems' ) {
 			my @menu = ();
@@ -107,7 +106,7 @@ if ( !$user || param('logout') ) {
 			push @submenu, a({-href=>'/?list=details&'.qs('group')}, 'All');
 			print htmlmenu(\@menu, \@submenu);
 			print start_table;
-			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Status']) ]);
 			my $tw = new Table::Wave;
 			foreach my $g ( sort keys %{$details} ) {
 				foreach my $s ( sort keys %{$details->{$g}} ) {
@@ -115,13 +114,12 @@ if ( !$user || param('logout') ) {
 					my $count = $COUNT->{$g}->{$s};
 					print Tr({-class=>'datarow'}, [
 						td({-bgcolor=>'white', class=>$group?'border':''}, [$group]).
-						td({-bgcolor=>'white', class=>'border'}, [a({-href=>'/?list=details&'.qs('group')."&system=$s&status=!INFO&status=!OK"}, $s) .' '. $lmi->{$g}->{$s}]).
-						td({-bgcolor=>'white', class=>'border', width=>'100px'}, [bar($count->{TSOK}, $count->{TSWARN}, $count->{TSALERT})]).
+						td({-bgcolor=>'white', class=>'border', width=>'200px'}, [bar($count->{TSOK}, $count->{TSWARN}, $count->{TSALERT}, a({-href=>'/?list=details&'.qs('group')."&system=$s&status=!INFO&status=!OK"}, $s) .' '. $lmi->{$g}->{$s})]).
 						td({-bgcolor=>'white', class=>'border', width=>'300px'}, [bar($count->{OK}, $count->{WARN}, $count->{ALERT})])
 					]), "\n";
 				}
 			}
-			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Timestamp', 'Status']) ]);
+			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Status']) ]);
 			print end_table;
 		} elsif ( param('list') && param('list') eq 'details' ) {
 			my @menu = ();
@@ -177,8 +175,8 @@ sub qs {
 
 sub bar {
 	@_ = map { $_ || 0 } @_;
-	my ($green, $yellow, $red, $number) = @_;
-	$number = $green + $yellow + $red unless $number;
+	my ($green, $yellow, $red, $display) = @_;
+	my $number = $green + $yellow + $red;
 	return undef unless $number;
 	$green = $green/$number*100;
 	$yellow = $green+($yellow/$number*100);
@@ -186,8 +184,8 @@ sub bar {
 	my $Green = "display: inline; background-color: green; position: absolute; width: $green%; z-index: 3;";
 	my $Yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; z-index: 2;";
 	my $Red = "display: inline; background-color: red; position: absolute; width: $red%; z-index: 1;";
-	my $Number = "display: inline; position: absolute; width: 100%; text-align: center; z-index: 4; font-size: 10px; vertical-align: center;";
-	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$Number}, "$_[0]+$_[1]+$_[2]=$number").div({-style=>$Green}, '&nbsp;').div({-style=>$Yellow}, '&nbsp;').div({-style=>$Red}, '&nbsp;')).br;
+	my $Number = "display: inline; position: absolute; width: 100%; z-index: 4; vertical-align: center;".($display?'':'text-align: center; font-size: 10px;');
+	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$Number}, $display||"$_[0]/$_[1]/$_[2] ( $number )").div({-style=>$Green}, '&nbsp;').div({-style=>$Yellow}, '&nbsp;').div({-style=>$Red}, '&nbsp;')).br;
 }
 
 sub details {
@@ -257,7 +255,7 @@ sub details {
 				$COUNT->{$_[2]}->{$_[3]}->{NOTOK} ||= 0;
 				$COUNT->{$_[2]}->{$_[3]}->{NOTOK}++ unless $_[6] eq 'INFO' || $_[6] eq 'OK';
 				$COUNT->{$_[2]}->{_}->{'TS'.$tsstatus} ||= 0;
-				$COUNT->{$_[2]}->{_}->{'TS'.$tsstatus}=1;
+				$COUNT->{$_[2]}->{_}->{'TS'.$tsstatus}++ unless $COUNT->{$_[2]}->{$_[3]}->{'TS'.$tsstatus};
 				$COUNT->{$_[2]}->{$_[3]}->{'TS'.$tsstatus} ||= 0;
 				$COUNT->{$_[2]}->{$_[3]}->{'TS'.$tsstatus}=1;
 
