@@ -134,20 +134,20 @@ if ( !$user || param('logout') ) {
 			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system')}, 'All');
 			print htmlmenu(\@menu, \@submenu);
 			print start_table;
-			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
 			my $tw = new Table::Wave;
 			foreach my $g ( sort keys %{$details} ) {
+				print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
 				foreach my $s ( sort keys %{$details->{$g}} ) {
 					foreach my $rec ( sort {$a <=> $b } keys %{$details->{$g}->{$s}} ) {
 						my $detail = $details->{$g}->{$s}->{$rec};
-						my ($group, $system, $pgroup, @details) = $tw->wave(@$detail{qw/group system pgroup property/}), map { $detail->{$_} } qw/status up_percent up_time value details/;
-						my $timestamp = $group ? $detail->{timestamp} : '';
+						my ($group, $system, $pgroup) = $tw->wave(@$detail{qw/group system pgroup/});
+						my $timestamp = $group || ($detail->{tsstatus} ne 'OK' && $system) ? $detail->{timestamp} : '';
 						print Tr({-class=>'datarow'}, [
 							td({-bgcolor=>$timestamp?$detail->{tscolor}:'white', class=>$timestamp?'border':''}, [$timestamp]).
 							td({-bgcolor=>'white', class=>$group?'border':''}, [a({-href=>"/?list=systems&group=$g"}, $group) .' '. ($group?$lmi->{$g}->{_}:'')]).
 							td({-bgcolor=>'white', class=>$system?'border':''}, [a({-href=>"/?list=details&group=$g&system=$s"}, $system) .' '. ($system?$lmi->{$g}->{$s}:'')]).
 							td({-bgcolor=>'white', class=>$pgroup?'border':''}, [$pgroup]).
-							td({-bgcolor=>$detail->{color}, class=>"border$detail->{tscolor}"}, [@details])
+							td({-bgcolor=>$detail->{color}, class=>"border$detail->{tscolor}"}, [@$detail{qw/property status up_percent up_time value details/}])
 						]);
 					}
 				}
@@ -165,18 +165,6 @@ if ( !$user || param('logout') ) {
 $session->flush;
 
 # --------------------------------------------------
-
-sub blank {
-	my ($this, $last) = @_;
-	my @this = @$this;
-	my @last = @$last;
-	do { $this[0]=''; $this[1]=''; } if $this[3] eq $last[3];
-	$this[2]='' if $this[2] eq $last[2];
-	$this[3]='' if $this[3] eq $last[3] && !$this[2];
-	$this[4]='' if $this[4] eq $last[4] && !$this[3];
-	$this[5]='' if $this[5] eq $last[5] && !$this[4];
-	return @this;
-}
 
 sub qs {
 	my @qs = ();
