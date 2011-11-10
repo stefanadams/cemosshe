@@ -185,7 +185,7 @@ sub bar {
 	my $Yellow = "display: inline; background-color: yellow; position: absolute; width: $yellow%; z-index: 2;";
 	my $Red = "display: inline; background-color: red; position: absolute; width: $red%; z-index: 1;";
 	my $Number = "display: inline; position: absolute; width: 100%; z-index: 4; vertical-align: center;".($display?'':'text-align: center; font-size: 10px;');
-	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$Number}, $display||"$_[0]/$_[1]/$_[2] ( $number )").div({-style=>$Green}, '&nbsp;').div({-style=>$Yellow}, '&nbsp;').div({-style=>$Red}, '&nbsp;')).br;
+	return div({-style=>"position: relative; vertical-align: top; "}, div({-style=>$Number}, $display||"$_[0] / $_[1] / $_[2] ( $number )").div({-style=>$Green}, '&nbsp;').div({-style=>$Yellow}, '&nbsp;').div({-style=>$Red}, '&nbsp;')).br;
 }
 
 sub details {
