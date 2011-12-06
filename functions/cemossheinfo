@@ -9,6 +9,7 @@ function CemossheInfo () {
     DateShow     
     UptimeShow   
     UnameShow    
+    AtJobsShow    
     WShow
     DfShow
     FreeShow

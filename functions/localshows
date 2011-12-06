@@ -69,6 +69,13 @@ function DateShow () {
     echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;date;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
 }
 
+function AtJobsShow () {
+    CemossheLog "$FUNCNAME $1"
+    OUT=`for i in $(atq | cut -f1); do (atq | egrep "^$i"; echo " - "; at -c $i | tail -2 | head -1) | paste -s -d ' '; done | sed -e 's/$/<br \/>/' | paste -s`
+    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
+    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;atq;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+}
+
 function LspciShow () {
     CemossheLog "$FUNCNAME $1"
     mkdir -p "$DATADIR/cache"

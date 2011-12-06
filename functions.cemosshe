@@ -242,8 +242,13 @@ function PushResults () {
 
         [ -z "$CENTRALCEMOSSHE" ] && return
 
-        curl -d user="${CENTRALCEMOSSHE_USER:-anonymous}" -d pass="${CENTRALCEMOSSHE_PASS:-anonymous}" --data-urlencode details@"$DATADIR/details.csv" --data-urlencode sla@"$DATADIR/sla.csv" -d systemgroup="$SYSTEMGROUP" -d systemname="$SYSTEMNAME" "$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
+        at=$(curl --stderr /dev/null -d user="${CENTRALCEMOSSHE_USER:-anonymous}" -d pass="${CENTRALCEMOSSHE_PASS:-anonymous}" --data-urlencode details@"$DATADIR/details.csv" --data-urlencode sla@"$DATADIR/sla.csv" -d systemgroup="$SYSTEMGROUP" -d systemname="$SYSTEMNAME" "$CENTRALCEMOSSHE")
     fi
+}
+
+function AtJobs () {
+        CemossheLog "AtJobs $at"
+	[ "$at" ] && echo -e "$at" | at midnight
 }
 
 #---------------------------------------------------------

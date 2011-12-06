@@ -37,7 +37,6 @@ use Table::Wave;
 
 my $root = "/home/cemosshe/csv";
 
-new CGI;
 my $session = new CGI::Session;
 my ($user, $pass) = &setupsession;
 
@@ -45,6 +44,8 @@ my $TIMESTAMP = UnixDate(ParseDate('now'), '%Y-%m-%d %H:%M:%S');
 my $TIMESTAMPS = UnixDate(ParseDate($TIMESTAMP), '%s');
 my $COUNT = {};
 
+$ENV{REMOTE_ADDR} = $ENV{HTTP_X_FORWARDED_FOR} if $ENV{HTTP_X_FORWARDED_FOR};
+print STDERR "$ENV{REMOTE_ADDR}: " . join ' -=- ', grep { $_ } param('systemgroup'), param('systemname') if $ENV{HTTP_USER_AGENT} =~ /curl/;
 if ( !$user || param('logout') ) {
 	print "[Login form]";
 	$session->delete;
@@ -55,7 +56,6 @@ if ( !$user || param('logout') ) {
 	print submit('login', 'Login');
 	print end_form;
 } elsif ( param('details') || param('sla') ) {
-	print STDERR "$user -=- $pass -=- ".param('systemgroup')." -=- ".param('systemname');
 	mkpath "$root/".param('systemgroup').'/'.param('systemname');
 	if ( param('details') && param('systemgroup') && param('systemname') && ($user eq 'admin' || $user eq param('systemgroup')) ) {
 		rename "$root/".param('systemgroup').'/'.param('systemname').'/details.csv', "$root/".param('systemgroup').'/'.param('systemname').'/details.csv~';
@@ -63,7 +63,6 @@ if ( !$user || param('logout') ) {
 		print DETAILS param('details');
 		close DETAILS;
 		chmod 0664, glob("$root/".param('systemgroup').'/'.param('systemname').'/*');
-		print "$root/".param('systemgroup').'/'.param('systemname')."/details.csv\n";
 	}
 	if ( param('sla') && param('systemgroup') && param('systemname') && ($user eq 'admin' || $user eq param('systemgroup')) ) {
 		rename "$root/".param('systemgroup').'/'.param('systemname').'/sla.csv', "$root/".param('systemgroup').'/'.param('systemname').'/sla.csv~';
@@ -71,15 +70,20 @@ if ( !$user || param('logout') ) {
 		print DETAILS param('sla');
 		close DETAILS;
 		chmod 0664, glob("$root/".param('systemgroup').'/'.param('systemname').'/*');
-		print "$root/".param('systemgroup').'/'.param('systemname')."/sla.csv\n";
+	}
+	open AT, "$root/".param('systemgroup').'/'.param('systemname').'/.at' and do {
+		$/ = undef;
+		my $at = <AT>;
+		close AT;
+		unlink "$root/".param('systemgroup').'/'.param('systemname').'/.at';
+		print $at; 
 	}
 } else {
-	print STDERR "$user -=- $pass";
 	param('list', 'groups') unless param('list');
 	print a({-href=>'/?logout=1'}, $user),br;
 	print htmlhead();
 	if ( my ($details, $lmi) = &details ) {
-		print "<div class=\"ok\">000 checks are OK</div> - <div class=\"notok\">000 show problems</div>", br, br;
+		print join(" - ", grep { $_ } ($COUNT->{_}->{OK}?"<div class=\"ok\">$COUNT->{_}->{OK} checks are OK</div>":''), ($COUNT->{_}->{NOTOK}?"<div class=\"notok\">$COUNT->{_}->{NOTOK} show problems</div>":'')), br, br;
 		if ( param('list') && param('list') eq 'groups' ) {
 			my @menu = ();
 			push @menu, a({-href=>'/?list=details&status=!INFO&status=!OK'}, 'All Not OK');
@@ -101,10 +105,12 @@ if ( !$user || param('logout') ) {
 			push @menu, a({-href=>'/?list=details&status=!INFO&status=!OK'}, 'All Not OK');
 			push @menu, a({-href=>'/?list=groups'}, 'Group List');
 			my @submenu = ();
-			push @submenu, a({-href=>'/?list=details&'.qs('group').'&status=!INFO&status=!OK'}, 'Not OK');
-			push @submenu, a({-href=>'/?list=details&'.qs('group').'&status=INFO'}, 'Info');
-			push @submenu, a({-href=>'/?list=details&'.qs('group')}, 'All');
-			print htmlmenu(\@menu, \@submenu);
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'pgroup', 'property').'&status=!INFO&status=!OK'}, 'Not OK');
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'pgroup', 'property').'&status=INFO'}, 'Info');
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'pgroup', 'property')}, 'All');
+			my @subsubmenu = ();
+			push @subsubmenu, a({-href=>'/?list=details&'.qs('status')}, '-'.param('group')) if param('group');
+			print htmlmenu(\@menu, \@submenu, \@subsubmenu);
 			print start_table;
 			print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Group', 'System', 'Status']) ]);
 			my $tw = new Table::Wave;
@@ -127,15 +133,26 @@ if ( !$user || param('logout') ) {
 			push @menu, a({-href=>'/?list=groups'}, 'Group List');
 			push @menu, a({-href=>'/?list=systems&'.qs('group')}, 'System List');
 			my @submenu = ();
-			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system').'&status=!INFO&status=!OK'}, 'Not OK');
-			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system').'&status=INFO'}, 'Info');
-			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system')}, 'All');
-			print htmlmenu(\@menu, \@submenu);
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system', 'pgroup', 'property').'&status=!INFO&status=!OK'}, 'Not OK');
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system', 'pgroup', 'property').'&status=INFO'}, 'Info');
+			push @submenu, a({-href=>'/?list=details&'.qs('group', 'system', 'pgroup', 'property')}, 'All');
+			my @subsubmenu = ();
+			push @subsubmenu, a({-href=>'/?list=details&'.qs('status', 'system', 'pgroup', 'property')}, '-'.param('group')) if param('group');
+			push @subsubmenu, a({-href=>'/?list=details&'.qs('status', 'group', 'pgroup', 'property')}, '-'.param('system')) if param('system');
+			push @subsubmenu, a({-href=>'/?list=details&'.qs('status', 'group', 'system', 'property')}, '-'.param('pgroup')) if param('pgroup');
+			push @subsubmenu, a({-href=>'/?list=details&'.qs('status', 'group', 'system', 'pgroup')}, '-'.param('property')) if param('property');
+			print htmlmenu(\@menu, \@submenu, \@subsubmenu);
 			print start_table;
 			my $tw = new Table::Wave;
 			foreach my $g ( sort keys %{$details} ) {
 				print Tr({-bgcolor=>'#dddddd', -class=>'border datarowhead'}, [ th(['Timestamp', 'System Group', 'System', 'Property Group', 'Property','Status','%-OK','Time on Status','Value','Details']) ]);
 				foreach my $s ( sort keys %{$details->{$g}} ) {
+					if ( param('at') ) {
+						open AT, ">>$root/$g/$s/.at";
+						print AT "midnight /sbin/shutdown -r now\n" if param('at') eq 'reboot';
+						print AT "now /bin/rm -f /usr/local/lib/cemosshe/Data/CompareFiles/$1\n" if param('at') =~ /^filechange_(.*?)$/;
+						close AT;
+					}
 					foreach my $rec ( sort {$a <=> $b } keys %{$details->{$g}->{$s}} ) {
 						my $detail = $details->{$g}->{$s}->{$rec};
 						my ($group, $system, $pgroup) = $tw->wave(@$detail{qw/group system pgroup/});
@@ -144,8 +161,9 @@ if ( !$user || param('logout') ) {
 							td({-bgcolor=>$timestamp?$detail->{tscolor}:'white', class=>$timestamp?'border':''}, [$timestamp]).
 							td({-bgcolor=>'white', class=>$group?'border':''}, [a({-href=>"/?list=systems&group=$g"}, $group) .' '. ($group?$lmi->{$g}->{_}:'')]).
 							td({-bgcolor=>'white', class=>$system?'border':''}, [a({-href=>"/?list=details&group=$g&system=$s"}, $system) .' '. ($system?$lmi->{$g}->{$s}:'')]).
-							td({-bgcolor=>'white', class=>$pgroup?'border':''}, [$pgroup]).
-							td({-bgcolor=>$detail->{color}, class=>"border$detail->{tscolor}"}, [@$detail{qw/property status up_percent up_time value details/}])
+							td({-bgcolor=>'white', class=>$pgroup?'border':''}, [a({-href=>"/?list=details&group=$g&system=$s&pgroup=$pgroup"}, $pgroup)]).
+							td({-bgcolor=>'white', class=>"border$detail->{tscolor}"}, [a({-href=>"/?list=details&group=$g&system=$s&property=$detail->{property}"}, $detail->{property})]).
+							td({-bgcolor=>$detail->{color}, class=>"border$detail->{tscolor}"}, [@$detail{qw/status up_percent up_time value details/}])
 						]);
 					}
 				}
@@ -166,9 +184,10 @@ $session->flush;
 
 sub qs {
 	my @qs = ();
-	foreach ( @_ ) {
-		next unless param($_);
-		push @qs, join '&', $_.'='.param($_);
+	foreach my $param ( @_ ) {
+		next unless param($param);
+		my @param = param($param);
+		push @qs, join '&', map { $param.'='.$_ } @param;
 	}
 	return join '&', @qs;
 }
@@ -246,6 +265,10 @@ sub details {
 
 				next unless want({timestamp=>0,group=>2,system=>3,pgroup=>4,property=>5,status=>6}, $tsstatus, @_[1..$#_]);
 
+				$COUNT->{_}->{$_[6]} ||= 0;
+				$COUNT->{_}->{$_[6]}++;
+				$COUNT->{_}->{NOTOK} ||= 0;
+				$COUNT->{_}->{NOTOK}++ unless $_[6] eq 'INFO' || $_[6] eq 'OK';
 				$COUNT->{$_[2]}->{_}->{$_[6]} ||= 0;
 				$COUNT->{$_[2]}->{_}->{$_[6]}++;
 				$COUNT->{$_[2]}->{$_[3]}->{$_[6]} ||= 0;
@@ -259,7 +282,9 @@ sub details {
 				$COUNT->{$_[2]}->{$_[3]}->{'TS'.$tsstatus} ||= 0;
 				$COUNT->{$_[2]}->{$_[3]}->{'TS'.$tsstatus}=1;
 
-				$details->{$group}->{$system}->{$.} = {
+				$_[-1] = a({-href=>"/?at=reboot&$ENV{QUERY_STRING}"}, $_[-1]) if $_[5] eq 'RebootRequired' && $_[6] ne 'OK';
+				$_[-1] = a({-href=>"/?at=$_[5]&$ENV{QUERY_STRING}"}, $_[-1]) if $_[5] =~ /^filechange_/ && $_[6] ne 'OK';
+				$details->{$_[2]}->{$_[3]}->{$.} = {
 					date=>$_[0],
 					time=>$_[1],
 					timestamp=>"$_[0] $_[1]",
@@ -346,7 +371,8 @@ sub setupsession {
 sub htmlmenu {
 	my @menu = ref $_[0] eq 'ARRAY' ? @{$_[0]} : ();
 	my @submenu = ref $_[1] eq 'ARRAY' ? @{$_[1]} : ();
-	return join(br, join(' / ', @menu), join (' / ', @submenu));
+	my @subsubmenu = ref $_[2] eq 'ARRAY' ? @{$_[2]} : ();
+	return join(br, join(' / ', @menu), join (' / ', @submenu), join(' / ', @subsubmenu));
 }
 
 sub htmlhead {
