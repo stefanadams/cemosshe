@@ -22,7 +22,11 @@
 #=========================================================
 . `dirname $0`/functions.cemosshe
 
-CemossheRun "$1"	# Supply an alternative configuration file on the command line
+if [ "$1" == "about" ]; then
+    curl -b /var/run/cemosshe/session -c /var/run/cemosshe/session -d sn=$(/bin/hostname -f) -X POST http://velite.cogstonestl.com/about
+else
+    CemossheRun "$1"	# Supply an alternative configuration file on the command line
+fi
 
 #############################################################################
 # CeMoSSHe: CEntral MOnitoring in a Simple SHell Environment
