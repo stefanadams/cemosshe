@@ -27,38 +27,25 @@
 # For list of changes please refer to the HISTORY file. Thanks.
 #############################################################################
 
-
-
 #---------------------------------------------------------
 # init library and files
 #---------------------------------------------------------
 
-DATE=`date +%Y-%m-%d`
-TIME=`date +%H:%M:%S`
-
-[ -z "$SYSTEMGROUP" ] && [ -e /etc/groupname ] && SYSTEMGROUP=`cat /etc/groupname`
-[ -z "$SYSTEMNAME" ] && SYSTEMNAME=`/bin/hostname -f`
-[ -z "$SYSTEMNAME" ] && [ -e /etc/systemname ] && SYSTEMNAME=`cat /etc/systemname`
-[ -z "$SYSTEMGROUP" ] && SYSTEMNAME=`echo $RANDOM$RANDOM | md5sum | cut -d\  -f1` && echo $SYSTEMGROUP > /etc/groupname
-[ -z "$SYSTEMNAME" ] && SYSTEMNAME=`echo $RANDOM$RANDOM | md5sum | cut -d\  -f1` && echo $SYSTEMGROUP > /etc/systemname
-
-[ -z "$CEMOSSHEDIR" ] && CEMOSSHEDIR=`dirname $0`
-[ -z "$DATADIR" ] && DATADIR=$CEMOSSHEDIR/Data
-[ -z "$TEMPDIR" ] && TEMPDIR=/tmp
-[ -z "$WWWDIR" ] && WWWDIR="$DATADIR"
 [ -z "$NETWAIT" ] && NETWAIT=5
 
-CEMOSSHELOG=`date +"$TEMPDIR/cemosshelog_%Y-%m-%d_%Hh%M"`
+TEMPDIR="/tmp"
+[ -z "$CEMOSSHEDIR" ] && CEMOSSHEDIR=`dirname $0`
 CEMOSSHEVERSION=`cat $CEMOSSHEDIR/version`
-
-mkdir -p "$DATADIR" "$WWWDIR"
+CEMOSSHEDATA=`mktemp`
 
 #############################################################################
 ### 	CeMoSShE internal functions
 #############################################################################
 function CemossheLog () {
-    date +"%Y-%m-%d %H:%M:%S - $@ " >> $CEMOSSHELOG
-    [[ -t "0" || -p /dev/stdin ]] && date +"%Y-%m-%d %H:%M:%S - $@ "
+    logger -s "$@"
+}
+function Cemosshe () {
+    perl -MJSON::Any -MMIME::Base64 -e '$/=undef; print JSON::Any->to_json({map{@_=split/=/,$_,2;$_[0]=>$_[1]}@ARGV}), "\n", encode_base64(<STDIN>), "\n"' pg="$PROPERTYGROUP" pn="$1" s="$2" n="$3" >> $CEMOSSHEDATA
 }
 
 #---------------------------------------------------------
@@ -68,7 +55,7 @@ function CemossheSelfCheck () {
     CemossheLog "CemossheSelfCheck $1 $DATE $TIME"
 
     if [ -f $TEMPDIR/cemosshe_lock.5 ]; then
-        logger -t MoSShE -p ${FACILITY:-local0}.err "$SYSTEMGROUP: $SYSTEMNAME - MoSShE in deadlock"
+        logger -t CeMoSShE -p ${FACILITY:-local0}.err "CeMoSShE in deadlock"
         rm -f $TEMPDIR/cemosshe_lock.*
         killall cemosshe
     fi
@@ -82,13 +69,12 @@ function CemossheSelfCheck () {
 
     LOCKSEXIST=`ls $TEMPDIR/cemosshe_lock.? 2>/dev/null`
     if [ -n "$LOCKSEXIST" ]; then
-        echo "CemossheSelfCheck failed: MoSShE locked.  "
+        echo "CemossheSelfCheck failed: CeMoSShE locked.  "
         echo "Self-terminating.  Fix with rm -f $TEMPDIR/cemosshe_lock.?" 
         echo " "
         echo " "
         cat $TEMPDIR/cemosshelog_*
-        date +"%Y-%m-%d %H:%M:%S - another MoSShE started and ran into lock"
-        rm -f "$CEMOSSHELOG"
+        date +"%Y-%m-%d %H:%M:%S - another CeMoSShE started and ran into lock"
         kill "$$"
     fi
     rm -f $TEMPDIR/cemosshelog_*
@@ -102,21 +88,19 @@ function CemossheSelfCheck () {
 function CemossheInstall () {
     CemossheLog "CemossheInstall"
 
+    perl -MMIME::Base64 -e exit 2>/dev/null || cpan MIME::Base64
+    perl -MJSON::Any -e exit 2>/dev/null || cpan JSON::Any
     [ -e /etc/cemosshe-firstrun ] || date +"%Y-%m-%d" > /etc/cemosshe-firstrun
     if [ ! -e /etc/host-notes ]; then
-        echo "System Notes for Display in MoSSHe" > /etc/host-notes
-        echo "MoSSHe Firstrun: "`cat /etc/cemosshe-firstrun` >> /etc/host-notes
+        echo "System Notes for Display in CeMoSSHe" > /etc/host-notes
+        echo "CeMoSSHe Firstrun: "`cat /etc/cemosshe-firstrun` >> /etc/host-notes
         [ -e /etc/issue ] && echo "Issue: "`cat /etc/issue` >> /etc/host-notes
         [ -e /etc/ubuntu-sealed ] && echo "Ubuntu Sealed: "`cat /etc/ubuntu-sealed` >> /etc/host-notes
         [ -e /etc/ubuntu-firstrun ] && echo "Ubuntu Firstrun: "`cat /etc/ubuntu-firstrun` >> /etc/host-notes
     fi
-    mkdir -p /etc/cemosshe/functions /usr/local/etc/cemosshe/functions /var/log/cemosshe "$DATADIR"
-    [ -e /etc/cemosshe/cemosshe.conf ] || cp -a "$CEMOSSHEDIR/cemosshe.conf" /etc/cemosshe/cemosshe.conf
-    [ -e /etc/cron.daily/logrotate-cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.daily_logrotate-cemosshe" /etc/cron.daily/logrotate-cemosshe
+    mkdir -p /etc/cemosshe/functions /usr/local/etc/cemosshe/functions
     [ -e /etc/cron.daily/upgrade-cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.daily_upgrade-cemosshe" /etc/cron.daily/upgrade-cemosshe
     [ -e /etc/cron.d/cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.d_cemosshe" /etc/cron.d/cemosshe
-    [ -e /root/.ssh/cemosshe_rsa ] && cp -af /root/.ssh/cemosshe_rsa /etc/cemosshe/rsa
-    [ -e /root/.ssh/cemosshe_rsa.pub ] && cp -af /root/.ssh/cemosshe_rsa.pub /etc/cemosshe/rsa.pub
     echo Installed $CEMOSSHEVERSION
 }
 function CemossheUninstall () {
@@ -137,137 +121,27 @@ function CemossheRun () {
     CemossheLog "CemossheRun $1"
 
     CONF=${1:-cemosshe}
+    mkdir -p /etc/cemosshe
+    [ -f /etc/cemosshe/$CONF.conf ] || curl -o /etc/cemosshe/$CONF.conf -b /var/run/cemosshe/session -c /var/run/cemosshe/session ${1:-http://velite.cogstonestl.com}/conf
     [ -f /etc/cemosshe/$CONF.conf ] || { echo /etc/cemosshe/$CONF.conf not found.  Aborting.; return; }
     CemossheSelfCheck "$0"
     . /etc/cemosshe/$CONF.conf
-    rm -f $TEMPDIR/tmp.$$.collected.tmp $TEMPDIR/cemosshe_lock.*	# Always make this the last step
-}
-
-#---------------------------------------------------------
-# Generate SLA info and Syslog it
-#---------------------------------------------------------
-function Finalize () {
-    FACILITY="${1:-local0}"
-    CemossheLog "Finalize $FACILITY"
-    while read NEW; do
-        NDATE=`echo $NEW | cut -d ";" -f 1`
-        NTIME=`echo $NEW | cut -d ";" -f 2`
-        NSYSTEMGROUP=`echo $NEW | cut -d ";" -f 3`
-        NSYSTEMNAME=`echo $NEW | cut -d ";" -f 4`
-        NPROPERTYGROUP=`echo $NEW | cut -d ";" -f 5`
-        NPROPERTYNAME=`echo $NEW | cut -d ";" -f 6`
-        NSTATUS=`echo $NEW | cut -d ";" -f 7`
-        NVALUE=`echo $NEW | cut -d ";" -f 8`
-        NDETAIL=`echo $NEW | cut -d ";" -f 9`
-        if [ "$NSTATUS" = "INFO" ]; then
-            echo "$NDATE;$NTIME;$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;$NSTATUS;;;$NVALUE;$NDETAIL" >> $TEMPDIR/tmp.$$.recollected.tmp
-        else
-            NEPOCH=`date -d "$NDATE $NTIME" +%s`
-            NPATH=`echo "$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME" | md5sum | cut -d\  -f1`
-            mkdir -p "$DATADIR/collected/$NPATH"
-            echo "$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME" > "$DATADIR/collected/$NPATH/path"
-            echo "$NEPOCH;$NSTATUS" > "$DATADIR/collected/$NPATH/new"
-            if [ -e "$DATADIR/collected/$NPATH/old" ]; then
-                OEPOCH=`cut -d ";" -f 1 "$DATADIR/collected/$NPATH/old"`
-                OSTATUS=`cut -d ";" -f 2 "$DATADIR/collected/$NPATH/old"`
-            else
-                OEPOCH="$NEPOCH"
-                OSTATUS=""
-            fi
-            DIFFSEC=$(($NEPOCH-$OEPOCH))
-            if ! [ "$NSTATUS" = "$OSTATUS" ] && ! [ "$NSTATUS" = "ALERT" -a \( "$OSTATUS" = "WARN" -o "$OSTATUS" = "UNDEF" \) ] && ! [ "$NSTATUS" = "WARN" -a \( "$OSTATUS" = "ALERT" -o "$OSTATUS" = "UNDEF" \) ] && ! [ "$NSTATUS" = "UNDEF" -a \( "$OSTATUS" = "WARN" -o "$OSTATUS" = "ALERT" \) ]; then
-                if [ "$NSTATUS" = "OK" ]; then
-                    UPDOWN="UP"
-                    DOWNUP="DOWN"
-                    logger -t MoSShE -p ${FACILITY}.info "$NSTATUS - $NPROPERTYNAME @ $NSYSTEMGROUP: $NSYSTEMNAME is okay - $NDETAIL"
-                else
-                    UPDOWN="DOWN"
-                    DOWNUP="UP"
-                    if [ "$NSTATUS" = 'WARN' ]; then
-                        logger -t MoSShE -p ${FACILITY}.warn "$NSTATUS - $NPROPERTYNAME @ $NSYSTEMGROUP: $NSYSTEMNAME is not okay - $NDETAIL"
-                    elif [ "$NSTATUS" = 'ALERT' ]; then
-                        logger -t MoSShE -p ${FACILITY}.alert "$NSTATUS - $NPROPERTYNAME @ $NSYSTEMGROUP: $NSYSTEMNAME is broken/critical - $NDETAIL"
-                    else
-                        logger -t MoSShE -p ${FACILITY}.err "$NSTATUS - $NPROPERTYNAME @ $NSYSTEMGROUP: $NSYSTEMNAME check is not working - $NDETAIL"
-                    fi
-                fi
-                echo "$NDATE;$NTIME;$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;$NSTATUS;$DOWNUP;$DIFFSEC;Was $DOWNUP for $DIFFSEC seconds" >> "$DATADIR/sla.csv"
-                echo "$NEPOCH;$NSTATUS" > "$DATADIR/collected/$NPATH/old"
-            else
-                if [ "$NSTATUS" = "OK" ]; then
-                    UPDOWN="UP"
-                    DOWNUP="DOWN"
-                else
-                    UPDOWN="DOWN"
-                    DOWNUP="UP"
-                fi
-            fi
-            UP=`grep ";$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;" "$DATADIR/sla.csv" | grep ";UP;" | cut -d\; -f9 | paste -s -d+ | bc`
-            DOWN=`grep ";$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;" "$DATADIR/sla.csv" | grep ";DOWN;" | cut -d\; -f9 | paste -s -d+ | bc`
-            if [ "$NSTATUS" = "$OSTATUS" ] || [ "$NSTATUS" = "ALERT" -a \( "$OSTATUS" = "WARN" -o "$OSTATUS" = "UNDEF" \) ] || [ "$NSTATUS" = "WARN" -a \( "$OSTATUS" = "ALERT" -o "$OSTATUS" = "UNDEF" \) ] || [ "$NSTATUS" = "UNDEF" -a \( "$OSTATUS" = "WARN" -o "$OSTATUS" = "ALERT" \) ]; then
-                [ "$UPDOWN" = "UP" ] && UP=$(($UP+$DIFFSEC))
-                [ "$UPDOWN" = "DOWN" ] && DOWN=$(($DOWN+$DIFFSEC))
-            fi
-            TT=$((${UP:-1}+${DOWN:-1})) ; [ "$TT" -eq 0 ] && TT=1
-            PUP=`echo "scale=4;${UP:-1} / ${TT:-1} * 100" | bc | sed -e 's/00$//'`
-            echo "$NDATE;$NTIME;$NSYSTEMGROUP;$NSYSTEMNAME;$NPROPERTYGROUP;$NPROPERTYNAME;$NSTATUS;$PUP%;$DIFFSEC;$NVALUE;$NDETAIL" >> $TEMPDIR/tmp.$$.recollected.tmp
-        fi
-    done < "$TEMPDIR/tmp.$$.collected.tmp"
-    mv $TEMPDIR/tmp.$$.collected.tmp "$WWWDIR/index.csv"
-    mv $TEMPDIR/tmp.$$.recollected.tmp "$DATADIR/details.csv"
+    rm -f $TEMPDIR/cemosshe_lock.*	# Always make this the last step
 }
 
 #---------------------------------------------------------
 # PushResults method server:port username identityfile
 #---------------------------------------------------------
 function PushResults () {
-    if [ "$1" = "sftp" ] && [ `which sftp` ]; then
-        CemossheLog "PushResults $1 $2 $3 $4"
-        CENTRALCEMOSSHE=`echo $2 | cut -d: -f1`
-        CENTRALCEMOSSHE_PORT=`echo $2 | cut -d: -f2`
-        [ -z "$CENTRALCEMOSSHE_PORT" -o "$CENTRALCEMOSSHE" = "$CENTRALCEMOSSHE_PORT" ] && CENTRALCEMOSSHE_PORT=22
-        CENTRALCEMOSSHE_USER="$3"
-        CENTRALCEMOSSHE_IDENTITYFILE="$4"
-
-        [ -z "$CENTRALCEMOSSHE" ] && return
-
-        echo sftp -oPort="${CENTRALCEMOSSHE_PORT:-22}" -oIdentityFile="${CENTRALCEMOSSHE_IDENTITYFILE:-/etc/cemosshe/rsa}" "${CENTRALCEMOSSHE_USER:-cemosshe}"@"$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
-        echo -e "-mkdir csv/$SYSTEMGROUP\n-mkdir csv/$SYSTEMGROUP/$SYSTEMNAME\n-rename csv/$SYSTEMGROUP/$SYSTEMNAME/details.csv csv/$SYSTEMGROUP/$SYSTEMNAME/details.csv~\n-rename csv/$SYSTEMGROUP/$SYSTEMNAME/sla.csv csv/$SYSTEMGROUP/$SYSTEMNAME/sla.csv~\nput $DATADIR/details.csv csv/$SYSTEMGROUP/$SYSTEMNAME\nput $DATADIR/sla.csv csv/$SYSTEMGROUP/$SYSTEMNAME\nchmod 0664 csv/$SYSTEMGROUP/$SYSTEMNAME/*" | \
-            sftp -oPort="${CENTRALCEMOSSHE_PORT:-22}" -oIdentityFile="${CENTRALCEMOSSHE_IDENTITYFILE:-/etc/cemosshe/rsa}" "${CENTRALCEMOSSHE_USER:-cemosshe}"@"$CENTRALCEMOSSHE" 2>&1 >> $CEMOSSHELOG
-    elif [ "$1" = "curl" ] && [ `which curl` ]; then
-        CemossheLog "PushResults $1 $2 $3"
-        CENTRALCEMOSSHE="$2"
-        CENTRALCEMOSSHE_PASS="$3"
-        CENTRALCEMOSSHE_USER="${4:-$SYSTEMGROUP}"
-
-        [ -z "$CENTRALCEMOSSHE" ] && return
-
-        at=$(curl --stderr /dev/null -d user="${CENTRALCEMOSSHE_USER:-anonymous}" -d pass="${CENTRALCEMOSSHE_PASS:-anonymous}" --data-urlencode details@"$DATADIR/details.csv" --data-urlencode sla@"$DATADIR/sla.csv" -d systemgroup="$SYSTEMGROUP" -d systemname="$SYSTEMNAME" "$CENTRALCEMOSSHE")
-    fi
+    CemossheLog "PushResults ${1:-http://velite.cogstonestl.com}"
+    mkdir -p /var/run/cemosshe
+    at=$(curl -b /var/run/cemosshe/session -c /var/run/cemosshe/session -X POST --data-binary @$CEMOSSHEDATA ${1:-http://velite.cogstonestl.com})
+    rm -f $CEMOSSHEDATA
 }
 
 function AtJobs () {
         CemossheLog "AtJobs $at"
 	[ "$at" ] && echo -e "$at" | at midnight
-}
-
-#---------------------------------------------------------
-# LogTo filename
-#---------------------------------------------------------
-function LogTo () {
-    CemossheLog "LogTo $1 $2"
-    LOGFILENAME="$1"
-    [ -z "$LOGFILENAME" ] && return
-    LOGFREQ="$2"
-    mkdir -p `dirname $LOGFILENAME`
-    if [ "$LOGFREQ" = "Daily" ]; then
-        LOGFILENAME=$LOGFILENAME.$DATE
-    elif [ "$LOGFREQ" = "Weekly" ]; then
-        LOGFILENAME=$LOGFILENAME.`date +"%Ykw%W"`
-    elif [ "$LOGFREQ" = "Monthly" ]; then
-        LOGFILENAME=$LOGFILENAME.`date +"%Y-%m"`
-    fi
-    cat "$DATADIR/details.csv" >> $LOGFILENAME
 }
 
 #############################################################################

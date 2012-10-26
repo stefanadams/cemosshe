@@ -59,7 +59,7 @@ function HDCheck () {
         MOUNT=$HD
         MESSAGE="HDD not mounted??"
     fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$HD;$STATUS;$VALUE;$MOUNT $MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "HDCheck $MOUNT $MESSAGE" | Cemosshe "$HD" "$STATUS" "$VALUE"
 }
 
 
@@ -79,7 +79,7 @@ function FileCheck () {
          MESSAGE="File $FN does not exist"
          CODE=999
      fi
-     echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;file_${FN};$STATUS;$CODE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE" | Cemosshe "FileCheck $FN" "$STATUS" "$CODE"
 }
 
 
@@ -112,8 +112,7 @@ function FileTooOld () {
             VALUE=1
         fi
     fi
-
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;filetooold_$FILENAME;$STATUS;$VALUE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE" | Cemosshe "FileTooOld $FILENAME" "$STATUS" "$VALUE"
 }
 
 #---------------------------------------------------------
@@ -141,8 +140,7 @@ function FileTooBig () {
             MESSAGE="file $FILENAME seems to be small enough (${VALUE} KB)"
         fi
     fi
-
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;filetoobig_$FILENAME;$STATUS;$VALUE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE" | Cemosshe "FileTooBig $FILENAME" "$STATUS" "$VALUE"
 }
 
 
@@ -165,7 +163,7 @@ function LoadCheck () {
     STAT="Normal Load";
     if [ $LOAD -ge $WARN ]; then STATUS="WARN"; STAT="High Load"; fi
     if [ $LOAD -ge $ALERT ]; then STATUS="ALERT"; STAT="Critical Load"; fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;load;$STATUS;$LOAD;$STAT: $MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$STAT: $MESSAGE" | Cemosshe "LoadCheck" "$STATUS" "$LOAD"
 }
 
 
@@ -182,7 +180,7 @@ function LoadHektoCheck () {
     STAT="Normal Load";
     if [ $LOAD -ge $WARN ]; then STATUS="WARN"; STAT="High Load"; fi
     if [ $LOAD -ge $ALERT ]; then STATUS="ALERT"; STAT="Critical Load"; fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;loadhekto;$STATUS;$LOAD;$STAT: $MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$STAT: $MESSAGE" | Cemosshe "LoadHektoCheck" "$STATUS" "$LOAD"
 }
 
 
@@ -198,7 +196,7 @@ function ProcessCheck () {
     MESSAGE="Normal processes count"
     if [ $PROCESSES -ge $WARN ]; then STATUS="WARN"; MESSAGE="Many processes running"; fi
     if [ $PROCESSES -ge $ALERT ]; then STATUS="ALERT"; MESSAGE="Abnormal processes count"; fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;processes;$STATUS;$PROCESSES;$MESSAGE: $PROCESSES" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE: $PROCESSES" | Cemosshe "ProcessCheck" "$STATUS" "$PROCESSES"
 }
 
 
@@ -229,7 +227,7 @@ function ZombieCheck () {
     if [ $PROCESSES -gt $WARN ]; then STATUS="WARN"; fi
     if [ $PROCESSES -ge $ALERT ]; then STATUS="ALERT"; fi
 
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;zombies;$STATUS;$PROCESSES;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE" | Cemosshe "ZombieCheck" "$STATUS" "$PROCESSES"
 }
 
 
@@ -247,7 +245,7 @@ function ProcCheck () {
          STATUS="ALERT";
          MESSAGE="No process $1 found"
      fi
-     echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;proc_${FN};$STATUS;$PSNUM;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE" | Cemosshe "ProcCheck $FN" "$STATUS" "$PSNUM"
 }
 
 
@@ -275,7 +273,7 @@ function ShellCheck () {
         MESSAGE="$RUSERS root shells (bash, su) running"
         USERS="$RUSERS"
     fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;shells;$STATUS;$USERS;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE" | Cemosshe "ShellCheck" "$STATUS" "$USERS"
 }
 
 #---------------------------------------------------------
@@ -300,7 +298,7 @@ function MemCheck () {
             STATUS="ALERT";
             MESSAGE="Memory tight ($TOTAL MB free)"
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;memory;$STATUS;$TOTAL;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "MemCheck" "$STATUS" "$TOTAL"
     fi
 }
 
@@ -329,7 +327,7 @@ function SwapCheck () {
             STATUS="ALERT";
             MESSAGE="System memory heavily swapping ($SWAPS pages/s)"
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;swapping;$STATUS;$TOTAL;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "SwapCheck" "$STATUS" "$TOTAL"
     fi
 }
 
@@ -367,7 +365,7 @@ function PrintCheck () {
             MESSAGE="Printer $LP is down - $QUEUELEN jobs pending"
             QUEUELEN=999
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lpt_${LP};$STATUS;$QUEUELEN;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "PrintQueueCheck $LP" "$STATUS" "$QUEUELEN"
     fi
 }
 
@@ -397,7 +395,7 @@ function MailqCheck () {
             fi
         fi
 
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;mailq;$STATUS;$QUEUELEN;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "MailQueueCheck" "$STATUS" "$QUEUELEN"
     fi
 }
 
@@ -442,7 +440,7 @@ function MBMonCheck () {
             STATUS="OK"
             MESSAGE="$DESCRIP: $SVALUE in range"
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$PARAM;$STATUS;$SVALUE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "$PARAM" "$STATUS" "$SVALUE"
     fi
 }
 
@@ -472,7 +470,7 @@ function HardwareSensor () {      # Match  Description  WarnTemp  AlertTemp
             STATUS="OK"
             MESSAGE="Hardware ok $DESCR (${PARAM}) ok: $VALUE"
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Sensor_$DESCR;$STATUS;$VALUE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "HardwareSensor $DESCR" "$STATUS" "$VALUE"
     fi
 }
 
@@ -502,7 +500,7 @@ function HardwareTemp () {      # TempSensorNr  WarnTemp  AlertTemp
             STATUS="OK"
             MESSAGE="Server Temperature $DESCR (Temp${PARAM}) ok: $VALUE"
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Temp$PARAM;$STATUS;$VALUE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "HardwareTemp $PARAM" "$STATUS" "$VALUE"
     fi
 }
 
@@ -532,7 +530,7 @@ function HardwareFan () {       # FanNr "Descr" LowLimit HiLimit
             STATUS="OK"
             MESSAGE="Server Fan $DESCR (Fan${PARAM}) ok: $VALUE RPM"
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Fan$PARAM;$STATUS;$VALUE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "HardwareFan $PARAM" "$STATUS" "$VALUE"
     fi
 }
 
@@ -560,7 +558,7 @@ function SmartMonHealth () {
             MESSAGE="Disk $DEVTYPE on $DEVICE failing: $STATE"
             VALUE=3
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;hd_$DEVICE_$DEVTYPE;$STATUS;$VALUE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "SmartMonHealth $DEVICE $DEVTYPE" "$STATUS" "$VALUE"
     fi
 }
 
@@ -587,7 +585,7 @@ function Raid3ware () {
             MESSAGE="3ware Controller $CTRL unit $UNIT has problem: $STATE"
             VALUE=3
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;3ware_$RAID_$UNIT;$STATUS;$VALUE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "Raid3ware $RAID $UNIT" "$STATUS" "$VALUE"
     fi
 }
 
@@ -628,7 +626,7 @@ function RaidCheck () {
             MESSAGE="FAILED "${DEVICE}
             NUM=2
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;RAID;$STATUS;$NUM;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "RaidCheck" "$STATUS" "$NUM"
     fi
 }
 
@@ -687,7 +685,7 @@ function NetworkErrorsCheck () {
             STATUS="ALERT";
             MESSAGE="Traffic errors on $IFACE: $RXPERC % in / $TXPERC % out"
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;net_errors_${IFACE};$STATUS;$PERC;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "NetworkErrorsCheck $IFACE" "$STATUS" "$PERC"
     fi
 }
 
@@ -731,7 +729,7 @@ function NetworkTrafficCheck () {
                 MESSAGE="Excessive traffic on $IFACE: $TRAFPERSEC kbit/sec"
             fi
         fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;net_traffic_${IFACE};$STATUS;$TRAFPERSEC;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "NetworkTrafficCheck $IFACE" "$STATUS" "$TRAFPERSEC"
         echo "$NOW $TOTAL" > "$DATADIR/stat.networktraffic.$IFACE"
     fi
 }
@@ -768,7 +766,7 @@ function LogEntryCheck () {
         fi
     fi
 
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$NAME;$STATUS;$OCCUR;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$MESSAGE" | Cemosshe "LogEntryCheck $NAME" "$STATUS" "$OCCUR"
 }
 
 
@@ -808,7 +806,7 @@ function CheckFileChanges () {
         MESSAGE="File $ORIGF has changed"
         STATUS="WARN"
     fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;filechange_${KNOWNSHORT};$STATUS;$CODE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE" | Cemosshe "CheckFileChanges $KNOWNSHORT" "$STATUS" "$CODE"
 }
 
 
@@ -843,7 +841,7 @@ function CheckConfigChanges () {
         MESSAGE="Configuration  '$CMD'  has changed"
         STATUS="WARN"
     fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;confchange_${KNOWNSHORT};$STATUS;$CODE;$MESSAGE" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "$MESSAGE" | Cemosshe "CheckConfigChanges $KNOWNSHORT" "$STATUS" "$CODE"
     rm -f "$CMDOUT"
 }
 

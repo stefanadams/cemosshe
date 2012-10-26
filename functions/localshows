@@ -5,215 +5,148 @@
 
 function PublicIPShow () {
     CemossheLog "$FUNCNAME $1"
-    CHECKIP=${1:-http://checkip.cog-ent.com}
-    if [ `which curl` ]; then
-        OUT=`curl $CHECKIP 2>/dev/null | sed -e 's/$/<br \/>/' | paste -s`
-        OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Public IP;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
-    fi
+    [ `which curl` ] && curl ${1:-http://checkip.cog-ent.com} 2>/dev/null | Cemosshe "Public IP"
 }
 
 function PstreeShow () {
     CemossheLog "$FUNCNAME $1"
-    if [ `which pstree` ]; then
-        OUT=`pstree -capuA | sed -e 's/$/<br \/>/' | paste -s`
-        OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;pstree -capuA;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Processes <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
-    fi
+    [ `which pstree` ] && pstree -capuA | Cemosshe "Processes (pstree -capuA)"
 }
 
 function IfconfigShow () {
     CemossheLog "$FUNCNAME $1"
-    OUT=`ifconfig | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`/bin/ls -1 /sys/class/net | grep -v '^lo$' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;ifconfig;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT NICs <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+    ifconfig | Cemosshe "NICs (ifconfig)"
 }
 
 function CemossheVerShow () {
     CemossheLog "$FUNCNAME $1"
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME;INFO;1;$CEMOSSHEVERSION" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo $CEMOSSHEVERSION | Cemosshe "$FUNCNAME"
 }
 
 function DfShow () {
     CemossheLog "$FUNCNAME $1"
-    OUT=`df -hP | grep ^/dev/| sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;df -hP;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Partitions <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+    df -hP | grep ^/dev/ | Cemosshe "Partitions (df -hP)"
 }
 
 function RouteShow () {
     CemossheLog "$FUNCNAME $1"
-    OUT=`route -n | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;route -n;INFO;$(($OUTCOUNT-2));<div class='collapsable'>$(($OUTCOUNT-2)) Routes <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+    route -n | Cemosshe "Routes (route -n)"
 }
 
 function WShow () {
     CemossheLog "$FUNCNAME $1"
-    OUT=`w | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;w;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+    w | Cemosshe "Logged in Users (w)"
 }
 
 function UnameShow () {
     CemossheLog "$FUNCNAME $1"
-    OUT=`uname -a | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;uname -a;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+    uname -a | Cemosshe "System Information (uname -a)"
 }
 
 function DateShow () {
     CemossheLog "$FUNCNAME $1"
-    OUT=`date | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;date;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+    date | Cemosshe "Current Timestamp"
 }
 
 function AtJobsShow () {
     CemossheLog "$FUNCNAME $1"
-    OUT=`for i in $(atq | cut -f1); do (atq | egrep "^$i"; echo " - "; at -c $i | tail -2 | head -1) | paste -s -d ' '; done | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;atq;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
+    for i in $(atq | cut -f1); do (atq | egrep "^$i"; echo " - "; at -c $i | tail -2 | head -1); done | Cemosshe "AT Jobs (atq)"
 }
 
 function LspciShow () {
     CemossheLog "$FUNCNAME $1"
     mkdir -p "$DATADIR/cache"
     if [ `date +%H` -eq 1 ]; then
-        if [ `which lspci` ]; then
-            OUT=`lspci | sed -e 's/$/<br \/>/' | paste -s`
-            OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-            echo "$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lspci;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" > "$DATADIR/cache/lspci.txt"
-            echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lspci;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
-        fi
+        [ `which lspci` ] && lspci | tee "$DATADIR/cache/lspci.txt"
     elif [ -e "$DATADIR/cache/lspci.txt" ]; then
-        echo -n "$DATE;$TIME;" >> $TEMPDIR/tmp.$$.collected.tmp
-        cat "$DATADIR/cache/lspci.txt" >> $TEMPDIR/tmp.$$.collected.tmp
+        cat "$DATADIR/cache/lspci.txt"
     else
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lspci;INFO;0;lspci Built Daily" >> $TEMPDIR/tmp.$$.collected.tmp
-    fi
+	echo "lspci Built Daily"
+    fi | Cemosshe "PCI Device (lspci)"
 }
 
 function LshwShow () {
     CemossheLog "$FUNCNAME $1"
     mkdir -p "$DATADIR/cache"
     if [ `date +%H` -eq 1 ]; then
-        if [ `which lshw` ]; then
-            OUT=`lshw | sed -e 's/$/<br \/>/' | paste -s`
-            OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-            echo "$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lshw;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" > "$DATADIR/cache/lshw.txt"
-            echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lshw;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
-        fi
+        [ `which lshw` ] && lshw | tee "$DATADIR/cache/lshw.txt"
     elif [ -e "$DATADIR/cache/lshw.txt" ]; then
-        echo -n "$DATE;$TIME;" >> $TEMPDIR/tmp.$$.collected.tmp
-        cat "$DATADIR/cache/lshw.txt" >> $TEMPDIR/tmp.$$.collected.tmp
+        cat "$DATADIR/cache/lshw.txt"
     else
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;lshw;INFO;0;lshw Built Daily" >> $TEMPDIR/tmp.$$.collected.tmp
-    fi
-}
-
-function UptimeShow () {
-    CemossheLog "$FUNCNAME $1"
-    OUT=`uptime | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;uptime;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
-}
-
-function FileShow () {
-    CemossheLog "$FUNCNAME $1"
-    OUT=;
-    for i in "$@"; do OUT="$OUT<br /><u>$i:</u><br />$(cat $i | sed -e 's/$/<br \/>/' | paste -s)<br />"; done
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Files;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
-}
-
-function FreeShow () {
-    CemossheLog "$FUNCNAME $1"
-    OUT=`free | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Memory free;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
-}
-
-function NetstatShow () {
-    CemossheLog "$FUNCNAME $1"
-    OUT=`netstat -pan | grep "^tcp.*LISTEN" | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;netstat -pan;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
-}
-
-function LastLoginShow () {
-    CemossheLog "$FUNCNAME $1"
-    OUT=`last -1 | sed -e 's/$/<br \/>/' | paste -s`
-    OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Last Login;INFO;$OUTCOUNT;<div class='collapsable'><pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
-}
-
-function HostNotesShow () {
-    CemossheLog "$FUNCNAME $1"
-    if [ -f /etc/host-notes ]; then
-        OUT=`cat /etc/host-notes | sed -e 's/$/<br \/>/' | paste -s`
-        OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Host Notes;INFO;$OUTCOUNT;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
-    fi
+	echo "lshw Built Daily"
+    fi | Cemosshe "Hardware List (lshw)"
 }
 
 function PackagesShow () {
     CemossheLog "$FUNCNAME $1"
     mkdir -p "$DATADIR/cache"
+    PKG=
     if [ `date +%H` -eq 1 ]; then
         if [ `which rpm` ]; then
-            OUT=`rpm -qa | sed -e 's/$/<br \/>/' | paste -s`
-            OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-            echo "$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Packages <pre>$OUT</pre></div>" > "$DATADIR/cache/packages.txt"
-            echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Packages <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+            PKG="rpm -qa"
+            rpm -qa
         elif [ `which dpkg-query` ]; then
-            OUT=`dpkg-query -l | sed -e 's/$/<br \/>/' | paste -s`
-            OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-            echo "$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Packages <pre>$OUT</pre></div>" > "$DATADIR/cache/packages.txt"
-            echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;$OUTCOUNT;<div class='collapsable'>$OUTCOUNT Packages <pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
-        fi
+            PKG="dpkg-query -l"
+            dpkg-query -l
+        fi | tee "$DATADIR/cache/packages.txt"
     elif [ -e "$DATADIR/cache/packages.txt" ]; then
-        echo -n "$DATE;$TIME;" >> $TEMPDIR/tmp.$$.collected.tmp
-        sed -e "s/;Installed Packages;/;Installed Packages (cached);/" "$DATADIR/cache/packages.txt" >> $TEMPDIR/tmp.$$.collected.tmp
+        cat "$DATADIR/cache/packages.txt"
     else
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed Packages;INFO;0;Package List Built Daily" >> $TEMPDIR/tmp.$$.collected.tmp
-    fi
+	echo "Package List Built Daily"
+    fi | Cemosshe "Package List ($PKG)"
+}
+
+function UptimeShow () {
+    CemossheLog "$FUNCNAME $1"
+    uptime | Cemosshe "Uptime"
+}
+
+function FileShow () {
+    CemossheLog "$FUNCNAME $1"
+    for i in "$@"; do cat $i | Cemosshe "File $i"; done
+}
+
+function FreeShow () {
+    CemossheLog "$FUNCNAME $1"
+    free | Cemosshe "Memory Free (free)"
+}
+
+function NetstatShow () {
+    CemossheLog "$FUNCNAME $1"
+    netstat -tulpen | Cemosshe "Listening Ports (netstat -tulpen)"
+}
+
+function LastLoginShow () {
+    CemossheLog "$FUNCNAME $1"
+    last -1 | Cemosshe "Last Login"
+}
+
+function HostNotesShow () {
+    CemossheLog "$FUNCNAME $1"
+    [ -f /etc/host-notes ] && cat /etc/host-notes | Cemosshe "Host Notes"
 }
 
 function SysInfoShow () {
     CemossheLog "$FUNCNAME $1"
-    # Ubuntu
     if [ `which landscape-sysinfo` ]; then
+        # Ubuntu
         if [ $(echo "`cut -f1 -d ' ' /proc/loadavg` < 1.0" | bc) -eq 1 ]; then
             STATUS1=INFO ; STATUS2=0
-            RR=`landscape-sysinfo --exclude-sysinfo-plugins=LandscapeLink | perl -pi -e 'chomp; s/:\s+/:\t/g; s/\s{2,}/\t/g; $_="<tr><td>".join("</td><td>", grep { /$_/ } split /\t/)."</td></tr>";'`
+            landscape-sysinfo --exclude-sysinfo-plugins=LandscapeLink
         else
             STATUS1=ALERT ; STATUS2=0
-            RR="System information disabled due to load higher than 1"
-        fi
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;System Information;$STATUS1;$STATUS2;<table>$RR</table>" >> $TEMPDIR/tmp.$$.collected.tmp
+            echo "System information disabled due to load higher than 1"
+        fi | Cemosshe "System Information" "$STATUS1" "$STATUS2"
     fi
 }
 
 function IsVirtualShow () {
     CemossheLog "$FUNCNAME $1"
-    if [ `which dmidecode` ]; then
-        OUT=`dmidecode | egrep -i 'Product Name: VMware'`
-        [ "$?" ] && yn="0" || yn="1"
-        [ -z "$OUT" ] && OUT="No"
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Virtual?;INFO;$yn;$OUT" >> $TEMPDIR/tmp.$$.collected.tmp
-    fi
+    [ `which dmidecode` ] && dmidecode | egrep -i 'Product Name: VMware' | Cemosshe "Virtual? (dmidecode)"
 }
 
 function SSHShow () {
     CemossheLog "$FUNCNAME $1"
-    if [ -e /root/.ssh/authorized_keys ]; then
-        OUT=`cut -d' ' -f3 /root/.ssh/authorized_keys | sed -e 's/$/<br \/>/' | paste -s`
-        OUTCOUNT=`echo $OUT | grep -o '<br />' | wc -l`
-    else
-        OUT="-"
-        OUTCOUNT=0
-    fi
     [ -e /etc/ssh/publicport ] && . /etc/ssh/publicport
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;Installed SSH Keys for root;INFO;$OUTCOUNT;<div class='collapsable'>Public port: ${PUBLICPORT:-N/A}<pre>$OUT</pre></div>" >> $TEMPDIR/tmp.$$.collected.tmp
+    [ -e /root/.ssh/authorized_keys ] && cut -d' ' -f3 /root/.ssh/authorized_keys | Cemosshe "Installed SSH Keys for root on port ${PUBLICPORT:-N/A}"
 }
