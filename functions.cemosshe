@@ -135,7 +135,7 @@ function CemossheRun () {
 function PushResults () {
     CemossheLog "PushResults ${1:-http://velite.cogstonestl.com}"
     mkdir -p /var/run/cemosshe
-    at=$(curl -A "CeMoSShE/$CEMOSSHEVERSION ($(/bin/hostname -f))" -b /var/run/cemosshe/session -c /var/run/cemosshe/session -X POST --data-binary @$CEMOSSHEDATA ${1:-http://velite.cogstonestl.com})
+    at=$(curl -A "CeMoSShE/$CEMOSSHEVERSION {sn: \"$(/bin/hostname -f)\"}" -b /var/run/cemosshe/session -c /var/run/cemosshe/session -X POST --data-binary @$CEMOSSHEDATA ${1:-http://velite.cogstonestl.com})
     rm -f $CEMOSSHEDATA
 }
 
