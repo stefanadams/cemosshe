@@ -35,7 +35,7 @@
 
 function ForceStatus () {
     CemossheLog "$FUNCNAME $1 $2"
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME $1;$2;0;" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo | Cemosshe "$FUNCNAME $1" "$2"
 }
 
 #---------------------------------------------------------
@@ -46,13 +46,10 @@ function StaticIPCheck () {
     unset STATUS IP
     if ps axf | grep -q dhclient | grep -q -v grep; then
         STATUS=ALERT
-        IP=`/sbin/ifconfig $(ps -eo args | grep dhclient | grep -v grep | awk '{print $NF}') | grep 'inet addr:'| cut -d: -f2 | awk '{ print $1}' | sed -e 's/$/<br \/>/' | paste -s`
-        IP="DHCP:<br />$IP"
+        /sbin/ifconfig $(ps -eo args | grep dhclient | grep -v grep | awk '{print $NF}') | grep 'inet addr:'| cut -d: -f2 | awk '{ print $1}' | Cemosshe "Dynamic IPs" "ALERT"
     else
-        STATUS=OK
-        IP="Static"
+        echo | Cemosshe "No Dynamic IPs" "OK"
     fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME;$STATUS;0;$IP" >> $TEMPDIR/tmp.$$.collected.tmp
 }
 
 #---------------------------------------------------------
@@ -92,11 +89,12 @@ function HostsFileCheck () {
     FQDN=`/bin/hostname -f`
     DOMAIN=`/bin/hostname -d`
     if [ "$HOST.$DOMAIN" = "$FQDN" ]; then
-        STATUS=OK
+        STATUS="OK"
+        echo "$HOST . $DOMAIN"
     else
-        STATUS=WARN
-    fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME;$STATUS;0;$HOST . $DOMAIN" >> $TEMPDIR/tmp.$$.collected.tmp
+        STATUS="WARN"
+        echo "$HOST . $DOMAIN"
+    fi | Cemosshe "$FUNCNAME" "$STATUS"
 }
 
 #---------------------------------------------------------
@@ -112,7 +110,7 @@ function DaysUpCheck () {
     else
         STATUS="OK"
     fi
-    echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME;$STATUS;$DAYSUP;Uptime (in days): $DAYSUP" >> $TEMPDIR/tmp.$$.collected.tmp
+    echo "Uptime (in days): $DAYSUP" | Cemosshe "$FUNCNAME" "$STATUS"
 }
 
 #---------------------------------------------------------
@@ -133,7 +131,7 @@ function UpdatesAvailable () {
             STATUS1=OK; STATUS2=0
         fi
         RR=${RR:-No updates available}
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME;$STATUS1;$STATUS2;$RR" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$RR" | Cemosshe "$FUNCNAME" "$STATUS1" "$STATUS2"
     fi
 }
 
@@ -148,7 +146,7 @@ function ReleaseUpgrade () {
         [ -z "$RR" ] && STATUS1=OK || STATUS1=ALERT
         [ -z "$RR" ] && STATUS2=0 || STATUS2=1
         RR=${RR:-No upgrades available}
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME;$STATUS1;$STATUS2;$RR" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$RR" | Cemosshe "$FUNCNAME" "$STATUS1" "$STATUS2"
     fi
 }
 
@@ -163,7 +161,7 @@ function RebootRequired () {
         [ -z "$RR" ] && STATUS1=OK || STATUS1=ALERT
         [ -z "$RR" ] && STATUS2=0 || STATUS2=1
         RR=${RR:-No reboot required}
-        echo "$DATE;$TIME;$SYSTEMGROUP;$SYSTEMNAME;$PROPERTYGROUP;$FUNCNAME;$STATUS1;$STATUS2;$RR" >> $TEMPDIR/tmp.$$.collected.tmp
+        echo "$RR" | Cemosshe "$FUNCNAME" "$STATUS1" "$STATUS2"
     fi
 }
 
