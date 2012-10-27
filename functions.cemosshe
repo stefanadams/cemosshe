@@ -34,8 +34,11 @@
 [ -z "$NETWAIT" ] && NETWAIT=5
 
 TEMPDIR="/tmp"
+CEMOSSHESERVER=${CEMOSSHESERVER:-http://velite.cogstonestl.com}
+mkdir -p /var/run/cemosshe
+CEMOSSHESESSION="-b /var/run/cemosshe/session -c /var/run/cemosshe/session"
 [ -z "$CEMOSSHEDIR" ] && CEMOSSHEDIR=`dirname $0`
-CEMOSSHEVERSION=`cat $CEMOSSHEDIR/version`
+CEMOSSHEVERSION=`cut -d' ' -f2 $CEMOSSHEDIR/version`
 CEMOSSHEDATA=`mktemp`
 
 #############################################################################
@@ -45,14 +48,14 @@ function CemossheLog () {
     logger -s "$@"
 }
 function Cemosshe () {
-    perl -MJSON::Any -MMIME::Base64 -e '$/=undef; print JSON::Any->to_json({map{@_=split/=/,$_,2;$_[0]=>$_[1]}@ARGV}), "\n", encode_base64(<STDIN>), "\n"' pg="$PROPERTYGROUP" pn="$1" s="$2" n="$3" >> $CEMOSSHEDATA
+    perl -MJSON::Any -MMIME::Base64 -e '$/=undef; print JSON::Any->to_json({map{@_=split/=/,$_,2;$_[0]=>$_[1]}@ARGV}), "\n", encode_base64(<STDIN>), "\n"' pg="$PROPERTYGROUP" "$@" >> $CEMOSSHEDATA
 }
-
+	
 #---------------------------------------------------------
 # Self-Check & Self-Locking
 #---------------------------------------------------------
 function CemossheSelfCheck () {
-    CemossheLog "CemossheSelfCheck $1 $DATE $TIME"
+    CemossheLog "CemossheSelfCheck $0"
 
     if [ -f $TEMPDIR/cemosshe_lock.5 ]; then
         logger -t CeMoSShE -p ${FACILITY:-local0}.err "CeMoSShE in deadlock"
@@ -80,6 +83,10 @@ function CemossheSelfCheck () {
     rm -f $TEMPDIR/cemosshelog_*
     CemossheLog "CemossheSelfCheck - successfully established lock"
     date > $TEMPDIR/cemosshe_lock.0
+
+    for i in MIME::Base64 JSON JSON::Any Schedule::At; do
+        perl -M$i -e exit 2>/dev/null || { echo Install CPAN Module $i; exit; }
+    done
 }
 
 #---------------------------------------------------------
@@ -88,8 +95,6 @@ function CemossheSelfCheck () {
 function CemossheInstall () {
     CemossheLog "CemossheInstall"
 
-    perl -MMIME::Base64 -e exit 2>/dev/null || cpan MIME::Base64
-    perl -MJSON::Any -e exit 2>/dev/null || cpan JSON::Any
     [ -e /etc/cemosshe-firstrun ] || date +"%Y-%m-%d" > /etc/cemosshe-firstrun
     if [ ! -e /etc/host-notes ]; then
         echo "System Notes for Display in CeMoSSHe" > /etc/host-notes
@@ -99,9 +104,15 @@ function CemossheInstall () {
         [ -e /etc/ubuntu-firstrun ] && echo "Ubuntu Firstrun: "`cat /etc/ubuntu-firstrun` >> /etc/host-notes
     fi
     mkdir -p /etc/cemosshe/functions /usr/local/etc/cemosshe/functions
-    [ -e /etc/cron.daily/upgrade-cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.daily_upgrade-cemosshe" /etc/cron.daily/upgrade-cemosshe
-    [ -e /etc/cron.d/cemosshe ] || ln -sf "$CEMOSSHEDIR/cron/cron.d_cemosshe" /etc/cron.d/cemosshe
-    echo Installed $CEMOSSHEVERSION
+    [ -e /etc/cron.daily/upgrade-cemosshe ] || ln -nsf "$CEMOSSHEDIR/cron/cron.daily_upgrade-cemosshe" /etc/cron.daily/upgrade-cemosshe
+    [ -e /etc/cron.d/cemosshe ] || ln -nsf "$CEMOSSHEDIR/cron/cron.d_cemosshe" /etc/cron.d/cemosshe
+    echo Installed CeMoSShE $CEMOSSHEVERSION
+}
+function CemossheUpgrade () {
+    CemossheLog "CemossheUpgrade"
+
+    [ "$1" == "clean" ] && rm -rf "$CEMOSSHEDIR"
+    curl -A "CeMoSShE/$CEMOSSHEVERSION" $CEMOSSHESERVER/get | tar x -C "$CEMOSSHEDIR/.."
 }
 function CemossheUninstall () {
     CemossheLog "CemossheUninstall"
@@ -111,9 +122,8 @@ function CemossheUninstall () {
     [ -e /etc/cemosshe-firstrun ] && mv /etc/cemosshe-firstrun /etc/host-notes "$CEMOSSHEDIR/uninstall"
     [ -e /etc/cemosshe ] && mv /etc/cemosshe "$CEMOSSHEDIR/uninstall/etc-cemosshe"
     [ -e /usr/local/etc/cemosshe ] && mv /usr/local/etc/cemosshe "$CEMOSSHEDIR/uninstall/usr-local-etc-cemosshe"
-    [ -e /var/log/cemosshe ] && mv /var/log/cemosshe "$CEMOSSHEDIR/uninstall/var-log-cemosshe"
-    [ -e "$DATADIR" ] && mv "$DATADIR" "$CEMOSSHEDIR/uninstall"
-    rm -f /etc/cron.daily/logrotate-cemosshe /etc/cron.d/cemosshe
+    [ -e /etc/cron.daily/upgrade-cemosshe ] && rm -f /etc/cron.daily/upgrade-cemosshe
+    [ -e /etc/cron.d/cemosshe ] && rm -f /etc/cron.d/cemosshe
     rm -f $TEMPDIR/cemosshe_lock.*
     echo Uninstalled $CEMOSSHEVERSION
 }
@@ -122,9 +132,9 @@ function CemossheRun () {
 
     CONF=${1:-cemosshe}
     mkdir -p /etc/cemosshe
-    [ -f /etc/cemosshe/$CONF.conf ] || curl -o /etc/cemosshe/$CONF.conf -b /var/run/cemosshe/session -c /var/run/cemosshe/session ${1:-http://velite.cogstonestl.com}/conf
+    [ -f /etc/cemosshe/$CONF.conf ] || curl -o /etc/cemosshe/$CONF.conf -A "CeMoSShE/$CEMOSSHEVERSION" $CEMOSSHESESSION $CEMOSSHESERVER/conf/$CONF
     [ -f /etc/cemosshe/$CONF.conf ] || { echo /etc/cemosshe/$CONF.conf not found.  Aborting.; return; }
-    CemossheSelfCheck "$0"
+    CemossheSelfCheck
     . /etc/cemosshe/$CONF.conf
     rm -f $TEMPDIR/cemosshe_lock.*	# Always make this the last step
 }
@@ -133,15 +143,13 @@ function CemossheRun () {
 # PushResults method server:port username identityfile
 #---------------------------------------------------------
 function PushResults () {
-    CemossheLog "PushResults ${1:-http://velite.cogstonestl.com}"
-    mkdir -p /var/run/cemosshe
-    at=$(curl -A "CeMoSShE/$CEMOSSHEVERSION {\"sn\": \"$(/bin/hostname -f)\"}" -b /var/run/cemosshe/session -c /var/run/cemosshe/session -X POST --data-binary @$CEMOSSHEDATA ${1:-http://velite.cogstonestl.com})
+    CemossheLog "PushResults $CEMOSSHESERVER"
+    curl -A "$CEMOSSHEVERSION {\"sn\": \"$(/bin/hostname -f)\"}" -b /var/run/cemosshe/session -c /var/run/cemosshe/session -X POST --data-binary @$CEMOSSHEDATA $CEMOSSHESERVER | ScheduleAt
     rm -f $CEMOSSHEDATA
 }
 
-function AtJobs () {
-        CemossheLog "AtJobs $at"
-	[ "$at" ] && echo -e "$at" | at midnight
+function ScheduleAt () {
+    perl -MSchedule::At -MJSON -e '$/=undef; my $json = decode_json(<STDIN>||"{}"); my $at = delete $json->{at}; Schedule::At::add(%$_) foreach @$at; print encode_json($json)'
 }
 
 #############################################################################
